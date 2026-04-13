@@ -132,13 +132,16 @@ export async function proxy(request: NextRequest) {
         return NextResponse.redirect(redirectUrl);
       }
 
-      // Add staff info headers so layouts can detect staff mode
+      // Pass staff info as REQUEST headers so Server Components can read them via headers()
       const newPath = `/tenant/${tenantSlug}${url.pathname === "/" ? "" : url.pathname}`;
       url.pathname = newPath || `/tenant/${tenantSlug}`;
-      const rewriteResponse = NextResponse.rewrite(url);
-      rewriteResponse.headers.set("x-staff-role", role);
-      rewriteResponse.headers.set("x-staff-id", staffSession.staffId);
-      rewriteResponse.headers.set("x-staff-name", staffSession.fullName);
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set("x-staff-role", role);
+      requestHeaders.set("x-staff-id", staffSession.staffId);
+      requestHeaders.set("x-staff-name", staffSession.fullName);
+      const rewriteResponse = NextResponse.rewrite(url, {
+        request: { headers: requestHeaders },
+      });
       supabaseResponse.cookies.getAll().forEach((cookie) =>
         rewriteResponse.cookies.set(cookie.name, cookie.value)
       );

@@ -47,10 +47,10 @@ export async function setStaffSessionCookie(
   const cookieStore = await cookies();
   const expiresAt = new Date(Date.now() + SESSION_DURATION_HOURS * 60 * 60 * 1000);
 
-  // Encode payload as base64 alongside the token for fast reads
-  const cookieValue = Buffer.from(
+  // Encode payload as base64 using btoa (Edge Runtime compatible)
+  const cookieValue = btoa(unescape(encodeURIComponent(
     JSON.stringify({ token, ...payload })
-  ).toString("base64");
+  )));
 
   cookieStore.set(COOKIE_NAME, cookieValue, {
     httpOnly: true,
@@ -70,7 +70,8 @@ export function getStaffSessionFromRequest(request: NextRequest): StaffSessionPa
   if (!cookieValue) return null;
 
   try {
-    const decoded = JSON.parse(Buffer.from(cookieValue, "base64").toString("utf-8"));
+    // Use atob which is Edge Runtime compatible
+    const decoded = JSON.parse(decodeURIComponent(escape(atob(cookieValue))));
     // Basic structure check
     if (!decoded.staffId || !decoded.orgSlug || !decoded.role) return null;
     return decoded as StaffSessionPayload;
@@ -94,7 +95,7 @@ export async function verifyStaffSession(request?: NextRequest): Promise<StaffSe
   if (!cookieValue) return null;
 
   try {
-    const decoded = JSON.parse(Buffer.from(cookieValue, "base64").toString("utf-8"));
+    const decoded = JSON.parse(decodeURIComponent(escape(atob(cookieValue))));
     const { token, staffId } = decoded;
 
     const admin = createAdminClient();

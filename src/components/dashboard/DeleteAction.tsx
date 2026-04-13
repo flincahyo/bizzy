@@ -1,6 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -13,6 +14,7 @@ interface DeleteActionProps {
 
 export function DeleteAction({ deleteAction, label = "Hapus" }: DeleteActionProps) {
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   return (
     <DropdownMenuItem
@@ -24,6 +26,7 @@ export function DeleteAction({ deleteAction, label = "Hapus" }: DeleteActionProp
           try {
             await deleteAction();
             toast.success("Berhasil dihapus.");
+            router.refresh();
           } catch (err: any) {
             toast.error(err.message ?? "Gagal menghapus.");
           }

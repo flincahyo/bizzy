@@ -54,7 +54,7 @@ export default async function StaffPage({ params }: StaffPageProps) {
             </CardTitle>
             <CardDescription className="text-xs mt-1">
               Karyawan login dengan Username + PIN di{" "}
-              <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-foreground">{slug}.bizzy.id/login</span>
+              <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-foreground">{slug}.bizzy.sbs/login</span>
             </CardDescription>
           </div>
         </CardHeader>
