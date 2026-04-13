@@ -9,6 +9,7 @@ import {
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 import { ModeToggle } from "@/components/mode-toggle";
+import { redirect, notFound } from "next/navigation";
 
 import { getTenantProfileBySlug } from "@/lib/services/tenant";
 
@@ -23,8 +24,16 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
   const { slug } = await params;
 
   const data = await getTenantProfileBySlug(slug);
-  
-  // Provide fallbacks if missing (e.g., viewing /tenant/demo without db init)
+
+  // Org doesn't exist at all → 404
+  if (!data) return notFound();
+
+  // User is logged in but NOT a member of this org → 403
+  if (data.profile && !data.isMember) {
+    redirect("/unauthorized");
+  }
+
+  // Provide fallbacks
   const orgName = data?.org?.name || "Toko Setup Required";
   const appsSubscription: AppsSubscription = data?.org?.apps_subscription || DEFAULT_SUBSCRIPTION;
   const userName = data?.profile?.full_name || "Pemilik";

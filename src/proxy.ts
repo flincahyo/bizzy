@@ -75,7 +75,7 @@ export async function proxy(request: NextRequest) {
   // ─── Tenant Route Rewriting ──────────────────────────────────────────────
   if (tenantSlug) {
     // Exclude authentication and system APIs from tenant scope rewriting
-    if (url.pathname === "/login" || url.pathname.startsWith("/auth/") || url.pathname.startsWith("/api/")) {
+    if (url.pathname === "/login" || url.pathname === "/unauthorized" || url.pathname.startsWith("/auth/") || url.pathname.startsWith("/api/")) {
       return supabaseResponse;
     }
 

@@ -14,7 +14,16 @@ export async function getTenantProfileBySlug(slug: string) {
 
   // Get current session
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { org, profile: null };
+  if (!user) return { org, profile: null, isMember: false };
+
+  // Check if user is a member of this specific organization
+  const { data: membership } = await supabase
+    .from("memberships")
+    .select("id")
+    .eq("organization_id", org.id)
+    .eq("profile_id", user.id)
+    .eq("is_active", true)
+    .single();
 
   // Get user profile
   const { data: profile } = await supabase
@@ -23,7 +32,7 @@ export async function getTenantProfileBySlug(slug: string) {
     .eq("id", user.id)
     .single();
 
-  return { org, profile };
+  return { org, profile, isMember: !!membership };
 }
 
 export async function getTenantDashboardStats(orgId: string) {

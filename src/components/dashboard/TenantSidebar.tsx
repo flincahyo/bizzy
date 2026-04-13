@@ -66,7 +66,24 @@ export function TenantSidebar({
   userName = "Owner",
 }: TenantSidebarProps) {
   const pathname = usePathname();
-  const base = `/tenant/${slug}`;
+
+  // On subdomain (production): kopisonja.bizzy.sbs → use relative paths like /products
+  // On localhost: localhost:3000/tenant/slug → use /tenant/slug/products
+  const isSubdomain = typeof window !== "undefined"
+    ? !window.location.hostname.includes("localhost") && window.location.hostname.split(".").length >= 3
+    : false;
+
+  const base = isSubdomain ? "" : `/tenant/${slug}`;
+
+  // Active check: on subdomain pathname is /products, on localhost it's /tenant/slug/products
+  const getIsActive = (itemHref: string) => {
+    if (isSubdomain) {
+      if (itemHref === "") return pathname === "/";
+      return pathname.startsWith(itemHref);
+    }
+    const fullHref = `/tenant/${slug}${itemHref}`;
+    return itemHref === "" ? pathname === fullHref : pathname.startsWith(fullHref);
+  };
 
   return (
     <Sidebar collapsible="icon">
@@ -120,8 +137,8 @@ export function TenantSidebar({
           <SidebarGroupContent>
             <SidebarMenu>
               {navItems.map((item) => {
-                const href = `${base}${item.href}`;
-                const isActive = pathname === href || (item.href !== "" && pathname.startsWith(href));
+                const href = `${base}${item.href}` || "/";
+                const isActive = getIsActive(item.href);
 
                 return (
                   <SidebarMenuItem key={item.title}>
@@ -156,10 +173,10 @@ export function TenantSidebar({
               </SidebarMenuItem>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Landing Page">
-                  <Link href="/" target="_blank">
+                  <a href={`https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || "bizzy.sbs"}`} target="_blank" rel="noreferrer">
                     <Building2 />
                     <span>Tentang Bizzy</span>
-                  </Link>
+                  </a>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>
@@ -175,7 +192,7 @@ export function TenantSidebar({
                 <p className="text-sm text-muted-foreground leading-tight">
                   Anda menggunakan paket Starter. Upgrade untuk membuka lebih banyak kasir & batas produk.
                 </p>
-                <Link href={`${base}/settings`} className="mt-2 text-xs font-semibold bg-primary text-primary-foreground px-3 py-2 rounded-md text-center hover:bg-primary/90 transition-colors">
+                <Link href="/settings" className="mt-2 text-xs font-semibold bg-primary text-primary-foreground px-3 py-2 rounded-md text-center hover:bg-primary/90 transition-colors">
                   Upgrade Paket
                 </Link>
               </div>
