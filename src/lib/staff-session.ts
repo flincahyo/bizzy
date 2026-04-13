@@ -47,10 +47,8 @@ export async function setStaffSessionCookie(
   const cookieStore = await cookies();
   const expiresAt = new Date(Date.now() + SESSION_DURATION_HOURS * 60 * 60 * 1000);
 
-  // Encode payload as base64 using btoa (Edge Runtime compatible)
-  const cookieValue = btoa(unescape(encodeURIComponent(
-    JSON.stringify({ token, ...payload })
-  )));
+  // All values (UUID, slug, role) are ASCII — plain btoa is safe and Edge-compatible
+  const cookieValue = btoa(JSON.stringify({ token, ...payload }));
 
   cookieStore.set(COOKIE_NAME, cookieValue, {
     httpOnly: true,
@@ -58,8 +56,6 @@ export async function setStaffSessionCookie(
     sameSite: "lax",
     expires: expiresAt,
     path: "/",
-    // In production, scope to the specific subdomain (e.g. tokokedai.bizzy.sbs)
-    // We don't scope to root domain to prevent cross-tenant access
   });
 }
 
@@ -70,9 +66,8 @@ export function getStaffSessionFromRequest(request: NextRequest): StaffSessionPa
   if (!cookieValue) return null;
 
   try {
-    // Use atob which is Edge Runtime compatible
-    const decoded = JSON.parse(decodeURIComponent(escape(atob(cookieValue))));
-    // Basic structure check
+    // All cookie values are ASCII (UUIDs, slugs, roles) — plain atob is safe
+    const decoded = JSON.parse(atob(cookieValue));
     if (!decoded.staffId || !decoded.orgSlug || !decoded.role) return null;
     return decoded as StaffSessionPayload;
   } catch {
@@ -95,7 +90,7 @@ export async function verifyStaffSession(request?: NextRequest): Promise<StaffSe
   if (!cookieValue) return null;
 
   try {
-    const decoded = JSON.parse(decodeURIComponent(escape(atob(cookieValue))));
+    const decoded = JSON.parse(atob(cookieValue));
     const { token, staffId } = decoded;
 
     const admin = createAdminClient();

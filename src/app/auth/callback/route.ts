@@ -34,15 +34,17 @@ export async function GET(request: Request) {
                : (memberships[0].organizations as any).subdomain_slug;
            
            if (slug) {
-             const protocol = isLocalEnv ? "http://" : "https://";
-             const hostDomain = isLocalEnv 
-               ? "localhost:3000" 
-               : process.env.NEXT_PUBLIC_ROOT_DOMAIN || "bizzy.sbs";
-             // Build subdomain URL and return directly — do NOT override hostname
-             const subdomainUrl = isLocalEnv
-               ? `${protocol}${hostDomain}/tenant/${slug}`
-               : `${protocol}${slug}.${hostDomain}`;
-             return NextResponse.redirect(subdomainUrl);
+              const protocol = isLocalEnv ? "http://" : "https://";
+              const hostDomain = isLocalEnv 
+                ? "localhost:3000" 
+                : process.env.NEXT_PUBLIC_ROOT_DOMAIN || "bizzy.sbs";
+              const subdomainUrl = isLocalEnv
+                ? `${protocol}${hostDomain}/tenant/${slug}`
+                : `${protocol}${slug}.${hostDomain}`;
+              const res = NextResponse.redirect(subdomainUrl);
+              // Clear any leftover staff session so owner gets owner view
+              res.cookies.delete("bizzy_staff_session");
+              return res;
            }
         }
 

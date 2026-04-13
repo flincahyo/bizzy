@@ -2,7 +2,6 @@
 
 import { useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { staffLogin } from "@/lib/actions/dashboard";
 import { toast } from "sonner";
 import {
   Loader2, KeyRound, User, Building2
@@ -40,18 +39,34 @@ export function TenantLoginForm({ orgSlug, orgName }: TenantLoginFormProps) {
     }
   };
 
-  const handleStaffLogin = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleStaffLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    formData.set("orgSlug", orgSlug);
+    const username = (formData.get("username") as string)?.trim();
+    const pin = (formData.get("pin") as string)?.trim();
+
+    if (!username || !pin) return;
 
     startTransition(async () => {
       try {
-        const { redirectTo } = await staffLogin(formData);
+        const res = await fetch("/api/staff/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, pin, orgSlug }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          toast.error(data.error || "Login gagal. Coba lagi.");
+          return;
+        }
+
         toast.success("Login berhasil!");
-        setTimeout(() => { window.location.href = redirectTo; }, 400);
-      } catch (err: any) {
-        toast.error(err.message ?? "Login gagal. Coba lagi.");
+        setTimeout(() => {
+          window.location.href = data.redirectTo || "/pos";
+        }, 300);
+      } catch {
+        toast.error("Gagal menghubungi server. Coba lagi.");
       }
     });
   };
