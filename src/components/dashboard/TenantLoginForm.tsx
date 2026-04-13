@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { staffLogin } from "@/lib/actions/dashboard";
 import { toast } from "sonner";
 import {
-  Loader2, KeyRound, User, Building2, Chrome
+  Loader2, KeyRound, User, Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
