@@ -1,7 +1,27 @@
 import { Building2, LayoutDashboard, Users, CreditCard, LogOut } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { SidebarProvider, Sidebar, SidebarHeader, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarSeparator, SidebarFooter, SidebarInset } from "@/components/ui/sidebar";
+import { ModeToggle } from "@/components/mode-toggle";
+import { 
+  SidebarProvider, 
+  Sidebar, 
+  SidebarHeader, 
+  SidebarContent, 
+  SidebarGroup, 
+  SidebarGroupContent, 
+  SidebarMenu, 
+  SidebarMenuItem, 
+  SidebarMenuButton, 
+  SidebarFooter, 
+  SidebarInset,
+  SidebarTrigger 
+} from "@/components/ui/sidebar";
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbList,
+  BreadcrumbPage,
+} from "@/components/ui/breadcrumb";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -51,8 +71,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </SidebarFooter>
       </Sidebar>
 
-      <SidebarInset className="bg-muted/10 h-screen overflow-auto">
-        <div className="p-6">
+      <SidebarInset>
+        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b bg-background px-4 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="-ml-1" />
+            <div className="mr-2 h-4 w-px bg-border hidden md:block" />
+            <Breadcrumb className="hidden md:flex">
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbPage>Bizzy Super Admin Panel</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+          </div>
+          <div className="flex items-center gap-2">
+             <ModeToggle />
+          </div>
+        </header>
+        <div className="p-6 bg-muted/10 min-h-screen">
           {children}
         </div>
       </SidebarInset>

@@ -64,39 +64,6 @@ export default async function AdminDashboardPage() {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Placeholder Charts */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">MRR Growth</CardTitle>
-            <CardDescription>Estimated recurring revenue over time</CardDescription>
-          </CardHeader>
-          <CardContent className="h-64 flex items-center justify-center border-t border-border/40 bg-muted/10">
-            <span className="text-muted-foreground text-sm font-medium">Chart Area Placeholder</span>
-          </CardContent>
-        </Card>
-        
-        <Card className="border-indigo-500/20 bg-gradient-to-br from-indigo-500/5 to-transparent relative overflow-hidden">
-          <div className="absolute -top-10 -right-10 text-indigo-500/10 rotate-12">
-            <Sparkles size={120} />
-          </div>
-          <CardHeader>
-            <CardTitle className="text-base">Quick Actions</CardTitle>
-            <CardDescription>Frequently used super admin tasks</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3 relative z-10">
-            <div className="p-3 bg-background rounded-lg border border-border/50 text-sm font-medium hover:border-primary/50 cursor-pointer transition-colors shadow-sm">
-              <span className="flex items-center gap-2"><CreditCard size={16} /> Simulate Subscription Payment</span>
-            </div>
-            <div className="p-3 bg-background rounded-lg border border-border/50 text-sm font-medium hover:border-primary/50 cursor-pointer transition-colors shadow-sm">
-              <span className="flex items-center gap-2"><Users size={16} /> Invite New Client Manually</span>
-            </div>
-            <div className="p-3 bg-background rounded-lg border border-border/50 text-sm font-medium hover:border-primary/50 cursor-pointer transition-colors shadow-sm">
-              <span className="flex items-center gap-2"><Building2 size={16} /> Broadcast System Notice</span>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }
