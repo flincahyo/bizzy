@@ -12,6 +12,7 @@ import { AddWarehouseDialog } from "@/components/dashboard/AddWarehouseDialog";
 import { RequestTransferDialog } from "@/components/dashboard/RequestTransferDialog";
 import { TransferOrderActions } from "@/components/dashboard/TransferOrderActions";
 import { deleteWarehouse } from "@/lib/actions/dashboard";
+import { AppsSubscription, DEFAULT_SUBSCRIPTION, INVENTORY_TIERS } from "@/lib/features";
 
 interface WarehousesPageProps {
   params: Promise<{ slug: string }>;
@@ -39,6 +40,12 @@ export default async function WarehousesPage({ params }: WarehousesPageProps) {
     orgId ? getTransferOrders(orgId) : [],
   ]);
 
+  const appsSubscription: AppsSubscription = profileData?.org?.apps_subscription || DEFAULT_SUBSCRIPTION;
+  const inventoryTier = appsSubscription.inventory.tier;
+  const isStarter = inventoryTier === "starter";
+  const maxWarehouses = INVENTORY_TIERS[inventoryTier].maxWarehouses;
+  const isAddLocked = warehouses.length >= maxWarehouses;
+
   return (
     <div className="space-y-5">
       {/* Page Header */}
@@ -59,7 +66,7 @@ export default async function WarehousesPage({ params }: WarehousesPageProps) {
         
         <TabsContent value="locations" className="mt-4 space-y-4">
           <div className="flex justify-end">
-            {orgId && <AddWarehouseDialog orgId={orgId} slug={slug} hasWarehouses={warehouses.length > 0} />}
+            {orgId && !isAddLocked && <AddWarehouseDialog orgId={orgId} slug={slug} hasWarehouses={warehouses.length > 0} />}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 border-t border-border/40 pt-4">
@@ -101,12 +108,23 @@ export default async function WarehousesPage({ params }: WarehousesPageProps) {
               </Card>
             ))}
             
-            {warehouses.length > 0 && (
+            {warehouses.length > 0 && !isAddLocked && (
               <Card className="border-border/60 border-dashed border-2 shadow-none bg-transparent hover:bg-muted/20 transition-colors flex items-center justify-center min-h-[220px]">
                 <div className="text-center p-6 text-muted-foreground">
                   <WarehouseIcon size={32} className="mx-auto mb-3 opacity-50" />
                   <p className="font-semibold text-sm text-foreground">Buka Cabang Baru?</p>
-                  <p className="text-xs mt-1">Upgrade ke Growth untuk multi-gudang.</p>
+                </div>
+              </Card>
+            )}
+            
+            {warehouses.length > 0 && isStarter && (
+              <Card className="border-primary/20 bg-primary/5 border-dashed border-2 shadow-none transition-colors flex items-center justify-center min-h-[220px] relative overflow-hidden">
+                <div className="absolute top-0 right-0 -mr-4 -mt-4 bg-primary/10 w-16 h-16 rounded-full blur-xl" />
+                <div className="text-center p-6 flex flex-col items-center">
+                  <WarehouseIcon size={32} className="mx-auto mb-3 text-primary opacity-80" />
+                  <p className="font-semibold text-sm text-primary">Cabang Maksimal (Basic)</p>
+                  <p className="text-xs mt-1 text-muted-foreground">Upgrade ke Growth untuk multi-gudang.</p>
+                  <Button variant="default" size="sm" className="mt-3 text-xs w-full">Upgrade Paket</Button>
                 </div>
               </Card>
             )}
@@ -114,9 +132,22 @@ export default async function WarehousesPage({ params }: WarehousesPageProps) {
         </TabsContent>
         
         <TabsContent value="mutations" className="mt-4 space-y-4">
-           <div className="flex justify-end">
-             {orgId && <RequestTransferDialog orgId={orgId} slug={slug} warehouses={warehouses} />}
-           </div>
+          {isStarter ? (
+            <Card className="border-primary/20 bg-primary/5 shadow-sm mt-4 relative overflow-hidden text-center py-16">
+               <div className="absolute top-0 right-0 -mr-10 -mt-10 bg-primary/10 w-40 h-40 rounded-full blur-3xl" />
+               <div className="absolute bottom-0 left-0 -ml-10 -mb-10 bg-primary/10 w-40 h-40 rounded-full blur-3xl" />
+               <ArrowRightLeft className="mx-auto mb-4 text-primary opacity-80" size={48} />
+               <h3 className="text-lg font-bold text-foreground mb-2">Fitur Terkunci (Paket Starter)</h3>
+               <p className="text-sm text-muted-foreground max-w-md mx-auto mb-6">
+                 Fitur <strong>Mutasi Stok (Internal PO)</strong> dirancang khusus untuk operasional multi-cabang. Anda hanya memiliki satu gudang (Outlet) pada paket Starter.
+               </p>
+               <Button className="font-semibold">Upgrade ke Growth</Button>
+            </Card>
+          ) : (
+            <>
+               <div className="flex justify-end">
+                 {orgId && <RequestTransferDialog orgId={orgId} slug={slug} warehouses={warehouses} />}
+               </div>
            
            <Card className="border-border/60 shadow-sm mt-4">
              <CardHeader className="pb-3 bg-muted/30 border-b border-border/30">
@@ -167,6 +198,8 @@ export default async function WarehousesPage({ params }: WarehousesPageProps) {
                 </Table>
              </CardContent>
            </Card>
+           </>
+          )}
         </TabsContent>
       </Tabs>
     </div>
