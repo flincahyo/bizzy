@@ -1,34 +1,30 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { TenantLoginForm } from "@/components/dashboard/TenantLoginForm";
+import { Building2 } from "lucide-react";
+import { StaffLoginForm } from "@/components/dashboard/StaffLoginForm";
+import { OwnerLoginForm } from "@/components/dashboard/OwnerLoginForm";
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "bizzy.sbs";
 
 export default async function LoginPage() {
   const headersList = await headers();
-
-  // Vercel passes the real user-facing domain via x-forwarded-host
   const forwardedHost = headersList.get("x-forwarded-host");
-  const fallbackHost = headersList.get("host") ?? "";
-  const hostname = (forwardedHost ?? fallbackHost).split(":")[0];
+  const fallback = headersList.get("host") ?? "";
+  const hostname = (forwardedHost ?? fallback).split(":")[0];
 
-  // If accessed from the root domain → redirect to landing page
-  // All logins (owner + staff) happen from the tenant subdomain
+  // Root domain → redirect landing (all login via subdomain)
   const isRootDomain =
     hostname === ROOT_DOMAIN ||
     hostname === "localhost" ||
     hostname === "127.0.0.1";
 
-  if (isRootDomain) {
-    // Redirect to landing page — login only via tenant subdomain
-    redirect("/");
-  }
+  if (isRootDomain) redirect("/");
 
-  // Extract subdomain slug from hostname: tokokedai.bizzy.sbs → tokokedai
+  // Extract orgSlug from subdomain
   const orgSlug = hostname.replace(`.${ROOT_DOMAIN}`, "");
 
-  // Fetch org name for display
+  // Fetch org display name
   let orgName: string | undefined;
   try {
     const admin = createAdminClient();
@@ -42,7 +38,57 @@ export default async function LoginPage() {
 
   return (
     <div className="flex min-h-svh w-full items-center justify-center bg-background p-6">
-      <TenantLoginForm orgSlug={orgSlug} orgName={orgName} />
+      <div className="w-full max-w-sm">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="flex justify-center mb-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md">
+              <Building2 className="size-6" />
+            </div>
+          </div>
+          <h1 className="text-2xl font-bold">{orgName ?? orgSlug}</h1>
+          <p className="text-sm text-muted-foreground mt-1">Silakan masuk untuk melanjutkan</p>
+        </div>
+
+        {/* Tabs */}
+        <LoginTabs orgSlug={orgSlug} />
+
+        <p className="text-center text-xs text-muted-foreground mt-8">
+          © {new Date().getFullYear()} Bizzy SaaS. Hak Cipta Dilindungi.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Server component wrapper — tab switching done client-side inside each form
+function LoginTabs({ orgSlug }: { orgSlug: string }) {
+  return (
+    <div className="space-y-6">
+      {/* Owner section */}
+      <div className="space-y-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Pemilik Toko
+        </p>
+        <OwnerLoginForm />
+      </div>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t" />
+        </div>
+        <div className="relative flex justify-center text-xs uppercase">
+          <span className="bg-background px-2 text-muted-foreground">atau</span>
+        </div>
+      </div>
+
+      {/* Staff section */}
+      <div className="space-y-3">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          Masuk sebagai Karyawan
+        </p>
+        <StaffLoginForm orgSlug={orgSlug} />
+      </div>
     </div>
   );
 }
