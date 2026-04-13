@@ -135,6 +135,16 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // ─── OAuth Code Interceptor ───────────────────────────────────────────────
+  // Supabase sometimes redirects ?code= back to Site URL (/) instead of /auth/callback
+  // Catch it here and forward the code to the proper handler
+  const oauthCode = url.searchParams.get("code");
+  if (oauthCode && url.pathname === "/") {
+    const callbackUrl = url.clone();
+    callbackUrl.pathname = "/auth/callback";
+    return NextResponse.redirect(callbackUrl);
+  }
+
   return supabaseResponse;
 }
 
