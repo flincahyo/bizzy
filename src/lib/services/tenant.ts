@@ -1,10 +1,11 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function getTenantProfileBySlug(slug: string) {
-  const supabase = await createClient();
-  
-  // Get org details
-  const { data: org, error: orgError } = await supabase
+  // Use admin client for org lookup so RLS doesn't block staff users
+  // (staff are Supabase users but are NOT in the memberships table)
+  const admin = createAdminClient();
+  const { data: org, error: orgError } = await admin
     .from("organizations")
     .select("*")
     .eq("subdomain_slug", slug)
@@ -12,11 +13,18 @@ export async function getTenantProfileBySlug(slug: string) {
 
   if (orgError || !org) return null;
 
-  // Get current session
+  // Use user client for session-aware queries
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { org, profile: null, isMember: false };
 
-  // Check if user is a member of this specific organization
+  // Staff users (is_staff: true in metadata) are not in memberships — skip that check
+  const isStaff = user.user_metadata?.is_staff === true;
+  if (isStaff) {
+    return { org, profile: null, isMember: false };
+  }
+
+  // Owner: check membership in this specific organization
   const { data: membership } = await supabase
     .from("memberships")
     .select("id")
@@ -25,7 +33,7 @@ export async function getTenantProfileBySlug(slug: string) {
     .eq("is_active", true)
     .single();
 
-  // Get user profile
+  // Get owner profile
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")
