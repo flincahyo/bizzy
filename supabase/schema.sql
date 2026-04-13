@@ -131,12 +131,16 @@ CREATE INDEX idx_product_categories_org_id ON public.product_categories(organiza
 -- ─────────────────────────────────────────────────────────────
 -- 7. PRODUCTS
 -- ─────────────────────────────────────────────────────────────
+CREATE TYPE product_type AS ENUM ('finished_good', 'raw_material');
+
 CREATE TABLE public.products (
   id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   category_id     UUID REFERENCES public.product_categories(id) ON DELETE SET NULL,
   sku             TEXT,
   name            TEXT NOT NULL,
+  product_type    product_type NOT NULL DEFAULT 'finished_good',
+  can_be_sold     BOOLEAN NOT NULL DEFAULT TRUE,
   description     TEXT,
   price           DECIMAL(15, 2) NOT NULL DEFAULT 0,
   cost_price      DECIMAL(15, 2) DEFAULT 0,
@@ -165,6 +169,35 @@ CREATE TABLE public.inventory_levels (
 
 CREATE INDEX idx_inventory_org_id ON public.inventory_levels(organization_id);
 CREATE INDEX idx_inventory_product_id ON public.inventory_levels(product_id);
+
+-- ─────────────────────────────────────────────────────────────
+-- 8B. TRANSFER ORDERS (Stock Requisitions)
+-- ─────────────────────────────────────────────────────────────
+CREATE TYPE transfer_status AS ENUM ('pending', 'processing', 'shipped', 'completed', 'rejected');
+
+CREATE TABLE public.transfer_orders (
+  id                       UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  organization_id          UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
+  requested_by             UUID REFERENCES public.staff_accounts(id) ON DELETE SET NULL,
+  source_warehouse_id      UUID NOT NULL REFERENCES public.warehouses(id),
+  destination_warehouse_id UUID NOT NULL REFERENCES public.warehouses(id),
+  status                   transfer_status NOT NULL DEFAULT 'pending',
+  notes                    TEXT,
+  created_at               TIMESTAMPTZ DEFAULT NOW(),
+  updated_at               TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_transfer_orders_org_id ON public.transfer_orders(organization_id);
+
+CREATE TABLE public.transfer_order_items (
+  id                 UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  transfer_order_id  UUID NOT NULL REFERENCES public.transfer_orders(id) ON DELETE CASCADE,
+  product_id         UUID NOT NULL REFERENCES public.products(id),
+  quantity_requested INT NOT NULL DEFAULT 1,
+  quantity_fulfilled INT DEFAULT 0
+);
+
+CREATE INDEX idx_transfer_items_order_id ON public.transfer_order_items(transfer_order_id);
 
 -- ─────────────────────────────────────────────────────────────
 -- 9. TRANSACTIONS (POS Sales & Stock Movements)
@@ -255,6 +288,8 @@ ALTER TABLE public.inventory_levels   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transaction_items  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.billing_invoices   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.transfer_orders    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.transfer_order_items ENABLE ROW LEVEL SECURITY;
 
 -- ORGANIZATIONS
 CREATE POLICY "Users can view their own organization"

@@ -41,3 +41,32 @@ export async function getStaff(orgId: string) {
     .order("created_at", { ascending: false });
   return data || [];
 }
+export async function getTransferOrders(orgId: string) {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("transfer_orders")
+    .select(`
+      *,
+      requester:staff_accounts!requested_by(full_name),
+      source:warehouses!source_warehouse_id(name),
+      destination:warehouses!destination_warehouse_id(name),
+      items:transfer_order_items(
+        quantity_requested,
+        quantity_fulfilled,
+        product:products(name, sku)
+      )
+    `)
+    .eq("organization_id", orgId)
+    .order("created_at", { ascending: false });
+  return data || [];
+}
+
+export async function getPendingTransferCount(orgId: string) {
+  const admin = createAdminClient();
+  const { count } = await admin
+    .from("transfer_orders")
+    .select("id", { count: "exact" })
+    .eq("organization_id", orgId)
+    .in("status", ["pending", "processing"]);
+  return count || 0;
+}

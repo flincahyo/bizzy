@@ -12,7 +12,8 @@ export default async function PosPage({ params }: PosPageProps) {
   const profileData = await getTenantProfileBySlug(slug);
   const orgId = profileData?.org?.id;
   
-  const products = orgId ? await getProducts(orgId) : [];
+  let products = orgId ? await getProducts(orgId) : [];
+  products = products.filter((p: any) => p.product_type === 'finished_good' || p.can_be_sold === true);
 
   return (
     <div className="h-full">

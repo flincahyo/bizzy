@@ -14,6 +14,7 @@ import { redirect, notFound } from "next/navigation";
 import { headers } from "next/headers";
 
 import { getTenantProfileBySlug } from "@/lib/services/tenant";
+import { getPendingTransferCount } from "@/lib/services/products";
 
 import { AppsSubscription, DEFAULT_SUBSCRIPTION } from "@/lib/features";
 
@@ -48,12 +49,15 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
   const appsSubscription: AppsSubscription = data?.org?.apps_subscription || DEFAULT_SUBSCRIPTION;
   const userName = data?.profile?.full_name || "Pemilik";
   const avatarUrl = data?.profile?.avatar_url || "";
+  const orgId = data?.org?.id;
+  
+  const pendingTransferCount = orgId ? await getPendingTransferCount(orgId) : 0;
 
   // ── Staff Layout ─────────────────────────────────────────────────────────
   if (staffRole) {
     return (
       <SidebarProvider>
-        <StaffSidebar role={staffRole} orgName={orgName} staffName={staffName} />
+        <StaffSidebar role={staffRole} orgName={orgName} staffName={staffName} pendingTransferCount={pendingTransferCount} />
         <SidebarInset>
           <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
             <div className="flex items-center gap-2">
@@ -85,6 +89,7 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
         appsSubscription={appsSubscription}
         userName={userName}
         userAvatar={avatarUrl}
+        pendingTransferCount={pendingTransferCount}
       />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">

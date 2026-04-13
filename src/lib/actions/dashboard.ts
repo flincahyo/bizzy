@@ -21,6 +21,8 @@ export async function createProduct(formData: FormData) {
   const initialStock = parseInt(formData.get("initial_stock") as string) || 0;
   let imageUrl = formData.get("image_url") as string | null;
   const imageFile = formData.get("image_file") as File | null;
+  const productType = formData.get("product_type") as string || "finished_good";
+  const canBeSold = formData.get("can_be_sold") !== "false";
 
   // Check Subscription Limit
   const { data: org } = await supabase.from("organizations").select("apps_subscription").eq("id", orgId).single();
@@ -80,7 +82,8 @@ export async function createProduct(formData: FormData) {
     .from("products")
     .insert({ 
       organization_id: orgId, name, description, sku, price, 
-      cost_price: costPrice, category_id: categoryId, image_url: imageUrl, is_active: true 
+      cost_price: costPrice, category_id: categoryId, image_url: imageUrl, is_active: true,
+      product_type: productType, can_be_sold: canBeSold
     })
     .select()
     .single();
@@ -413,5 +416,109 @@ export async function deleteAccount() {
   const { error: authError } = await adminClient.auth.admin.deleteUser(user.id);
   if (authError) throw new Error("Gagal menghapus akun: " + authError.message);
 
+  return { success: true };
+}
+
+// ─── TRANSFER ORDERS (MUTASI STOK) ──────────────────────────────────────────
+
+export async function createTransferOrder(formData: FormData) {
+  const supabase = await createClient();
+  const orgId = formData.get("orgId") as string;
+  const slug = formData.get("slug") as string;
+  const sourceId = formData.get("sourceId") as string;
+  const destinationId = formData.get("destinationId") as string;
+  const notes = formData.get("notes") as string;
+  const itemsJson = formData.get("items") as string;
+  const items = JSON.parse(itemsJson) as { productId: string; qty: number }[];
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Unauthorized");
+  
+  // Get staff account ID mapping for this user
+  const { data: staff } = await supabase.from("staff_accounts").select("id").eq("supabase_user_id", user.id).maybeSingle();
+
+  const { data: order, error } = await supabase
+    .from("transfer_orders")
+    .insert({
+      organization_id: orgId,
+      source_warehouse_id: sourceId,
+      destination_warehouse_id: destinationId,
+      notes,
+      requested_by: staff?.id || null, // Might be owner, so null is fine if no staff_id matches
+    })
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  const orderItems = items.map(item => ({
+    transfer_order_id: order.id,
+    product_id: item.productId,
+    quantity_requested: item.qty
+  }));
+
+  const { error: itemsError } = await supabase.from("transfer_order_items").insert(orderItems);
+  if (itemsError) throw new Error(itemsError.message);
+
+  revalidatePath(`/tenant/${slug}/warehouses`);
+  return { success: true };
+}
+
+export async function updateTransferOrderStatus(orderId: string, orgId: string, newStatus: string, slug: string) {
+  const adminClient = createAdminClient();
+  
+  // Get order details
+  const { data: order } = await adminClient
+    .from("transfer_orders")
+    .select("*, items:transfer_order_items(*)")
+    .eq("id", orderId)
+    .single();
+
+  if (!order) throw new Error("Order not found");
+
+  // Update Status
+  const { error } = await adminClient.from("transfer_orders").update({ status: newStatus }).eq("id", orderId);
+  if (error) throw new Error(error.message);
+
+  // Stock Movement Logic
+  if (newStatus === "shipped") {
+    // Deduct from Source Warehouse
+    for (const item of order.items) {
+       // We should upsert or decrement
+       const { data: inv } = await adminClient.from("inventory_levels")
+         .select("id, quantity")
+         .eq("warehouse_id", order.source_warehouse_id)
+         .eq("product_id", item.product_id)
+         .maybeSingle();
+       
+       if (inv) {
+         await adminClient.from("inventory_levels").update({ quantity: (inv.quantity || 0) - item.quantity_requested }).eq("id", inv.id);
+       } else {
+         // Create negative stock record (rare but possible if source didn't have it explicitly created)
+         await adminClient.from("inventory_levels").insert({
+           organization_id: orgId, warehouse_id: order.source_warehouse_id, product_id: item.product_id, quantity: -item.quantity_requested
+         });
+       }
+    }
+  } else if (newStatus === "completed") {
+    // Add to Destination Warehouse
+    for (const item of order.items) {
+       const { data: inv } = await adminClient.from("inventory_levels")
+         .select("id, quantity")
+         .eq("warehouse_id", order.destination_warehouse_id)
+         .eq("product_id", item.product_id)
+         .maybeSingle();
+       
+       if (inv) {
+         await adminClient.from("inventory_levels").update({ quantity: (inv.quantity || 0) + item.quantity_requested }).eq("id", inv.id);
+       } else {
+         await adminClient.from("inventory_levels").insert({
+           organization_id: orgId, warehouse_id: order.destination_warehouse_id, product_id: item.product_id, quantity: item.quantity_requested
+         });
+       }
+    }
+  }
+
+  revalidatePath(`/tenant/${slug}/warehouses`);
   return { success: true };
 }

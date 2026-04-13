@@ -27,6 +27,7 @@ export function AddProductDialog({ orgId, slug, warehouses }: AddProductDialogPr
   const [open, setOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [warehouseId, setWarehouseId] = useState(warehouses[0]?.id ?? "");
+  const [productType, setProductType] = useState("finished_good");
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -34,6 +35,13 @@ export function AddProductDialog({ orgId, slug, warehouses }: AddProductDialogPr
     form.set("orgId", orgId);
     form.set("slug", slug);
     form.set("warehouse_id", warehouseId);
+    form.set("product_type", productType);
+    if (productType === "raw_material") {
+      form.set("price", "0");
+      form.set("can_be_sold", "false");
+    } else {
+      form.set("can_be_sold", "true");
+    }
 
     startTransition(async () => {
       try {
@@ -63,14 +71,28 @@ export function AddProductDialog({ orgId, slug, warehouses }: AddProductDialogPr
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2 flex flex-col gap-2">
-              <Label htmlFor="name">Nama Produk *</Label>
-              <Input id="name" name="name" placeholder="Kopi Susu" required />
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="name">Nama Produk/Item *</Label>
+              <Input id="name" name="name" placeholder="Roti Cokelat" required />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="price">Harga Jual (IDR) *</Label>
-              <Input id="price" name="price" type="number" placeholder="25000" required min="0" />
+              <Label>Tipe Item</Label>
+              <Select value={productType} onValueChange={setProductType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pilih tipe" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="finished_good">Barang Jual (Kasir)</SelectItem>
+                  <SelectItem value="raw_material">Bahan Baku (Gudang)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+            {productType === "finished_good" && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="price">Harga Jual (IDR) *</Label>
+                <Input id="price" name="price" type="number" placeholder="25000" required min="0" />
+              </div>
+            )}
             <div className="flex flex-col gap-2">
               <Label htmlFor="cost_price">Harga Modal (IDR)</Label>
               <Input id="cost_price" name="cost_price" type="number" placeholder="12000" min="0" />
@@ -84,9 +106,8 @@ export function AddProductDialog({ orgId, slug, warehouses }: AddProductDialogPr
               <Input id="category" name="category" placeholder="Minuman" />
             </div>
             <div className="col-span-2 flex flex-col gap-2">
-              <Label htmlFor="image_file">Gambar Produk (Opsional)</Label>
+              <Label htmlFor="image_file">Gambar Icon (Opsional)</Label>
               <Input id="image_file" name="image_file" type="file" accept="image/*" />
-              <p className="text-xs text-muted-foreground">Pilih file gambar dari komputer Anda.</p>
             </div>
             {warehouses.length > 0 && (
               <>

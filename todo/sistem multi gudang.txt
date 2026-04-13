@@ -1,0 +1,36 @@
+Sekarang, mari kita brainstorm mengenai studi kasus toko roti tadi. Ini persis menyentuh inti mengapa nama menu di Bizzy kita pisahkan dari awal antara "Toko/Kasir" dan "Gudang".
+
+Untuk klien kelas atas/profesional (seperti contoh toko roti yang sudah semi-manufaktur tadi), konsep Inventory Management yang tepat tidak sesederhana "jumlah stok = 20". Kita harus mengenal istilah Multi-Lokasi Gudang (Warehouses) dan Tipe Barang (Item Types).
+
+Berdasarkan pengalaman struktur aplikasi Enterprise ERP (seperti Odoo atau SAP yang disederhanakan untuk Bizzy), ini arsitektur profesional yang kita butuhkan:
+
+1. Klasifikasi Tipe Produk (Inventory Types)
+Produk di Bizzy butuh label/tipe untuk menentukan cara berinteraksinya:
+
+Bahan Baku (Raw Material): Tepung, Gula, Ragi. (Hanya terlihat di menu Gudang, TIDAK ADA di menu POS Kasir).
+Barang Jadi (Finished Good): Roti Cokelat matang siap jual. (Dibuat di gudang produksi, dikirim ke outlet, terlihat di menu POS).
+2. Konsep Multi-Gudang (Multiple Warehouses / Locations)
+Istilah "Gudang" di Bizzy jangan dimaknai hanya sebagai "ruangan penyimpanan gelap". Setiap outlet berjualan adalah sebuah Gudang fisik di mata sistem. Sehingga toko roti tersebut, di mata Bizzy, memiliki 2 "Gudang":
+
+"Pusat Produksi": Menyimpan stok Tepung (Raw Material), Gula, dan stok 500 Roti Cokelat matang.
+"Etalase Cabang A": Menyimpan stok 50 Roti Cokelat matang saja. (Outlet / Tempat POS ini mengambil datanya langsung dari lokasi ini).
+3. Alur Kerja (Workflow) Bizzy yang Profesional
+Mari kita rangkai bagaimana Owner, Gudang, dan Kasir bekerja:
+
+Pembuatan Barang Jadi (Produksi): Staf gudang masuk menu "Produksi/Konversi" (opsional di tier Pro). Mengubah stok Tepung dan Gula menjadi +100 Roti Cokelat yang ditaruh di logistik "Pusat Produksi".
+Transfer Stok (Internal Transfer / Mutations): Staf gudang mencatat pengiriman: "Pindah 50 Roti Cokelat dari [Pusat Produksi] ke [Etalase Cabang A]". (Ini mencegah staf kasir nakal yang bilang "Barang habis" padahal dikorupsi).
+Kasir Menjual (POS Sales): Si Staf Kasir di Cabang A hanya melihat 50 Roti Cokelat. Saat terjual 1, otomatis stok di Etalase Cabang A jadi 49. (Tepung di Pusat Produksi tidak tersentuh).
+Stock Opname (Penyesuaian Fisik): Setiap akhir bulan, staf Gudang melakukan Stock Opname terpisah tiap lokasi. "Di Cabang A tercatat 49, tapi ternyata fisik 48. Catat selisih 1 (susut/rusak)".
+Owner Memantau (Analytics): Owner akhirnya buka dashboard dan melihat metrik yang indah: "Nilai Aset Tepung saya bernilai Rp 5 juta, semuanya aman di Pusat." "Pendapatan Roti di Cabang A hari ini Rp 1 juta, tapi ada penyusutan aset senilai Rp 15ribu karena roti basi."
+Bagaimana menyesuaikan ini ke Paket Pricing Bizzy?
+Karena arsitektur ini agak panjang (dan mahal secara development), kita bisa membaginya ke paket-paket seperti ini:
+
+Paket Starter (Bisnis Pemula / Kelontong)
+Hanya dapat 1 Gudang (berarti Outlet = Gudang).
+Semua barang masuk sini (langsung beli untuk djual, tidak ada menu produksi bahan baku).
+Paket Growth (Menengah)
+Sistem Multi-Gudang Terbuka. Bisa buat "Gudang Produksi" dan "Etalase Cabang".
+Disediakan menu Transfer Stok Antar Gudang.
+Paket Pro (Enterprise Manufaktur)
+Semua yang di atas, ditambah Bill of Materials / Resep (Otomatis potong 1kg tepung kalau kasir berhasil menjual 100 Roti Matang) — ini canggih banget buat toko makanan/F&B.
+Menurutmu pembagian struktur Tipe Produk dan Multi-Location Inventory seperti ini sudah proper dan masuk ke standar aplikasi mahal yang kamu bayangkan untuk Bizzy?

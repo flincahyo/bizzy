@@ -41,6 +41,7 @@ interface StaffSidebarProps {
   role: StaffRole;
   orgName?: string;
   staffName?: string;
+  pendingTransferCount?: number;
 }
 
 const ROLE_NAV: Record<StaffRole, { title: string; href: string; icon: any }[]> = {
@@ -66,7 +67,7 @@ const ROLE_LABEL: Record<StaffRole, string> = {
   admin: "Admin",
 };
 
-export function StaffSidebar({ role, orgName = "Toko", staffName }: StaffSidebarProps) {
+export function StaffSidebar({ role, orgName = "Toko", staffName, pendingTransferCount = 0 }: StaffSidebarProps) {
   const pathname = usePathname();
   const navItems = ROLE_NAV[role] || [];
 
@@ -145,9 +146,16 @@ export function StaffSidebar({ role, orgName = "Toko", staffName }: StaffSidebar
                       isActive={isActive}
                       tooltip={item.title}
                     >
-                      <Link href={item.href} prefetch={true}>
-                        <item.icon />
-                        <span>{item.title}</span>
+                      <Link href={item.href} prefetch={true} className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-2">
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </div>
+                        {item.title === "Gudang" && pendingTransferCount > 0 && (
+                          <span className="bg-red-500 text-white text-[10px] items-center justify-center font-bold px-1.5 py-0.5 rounded-full animate-pulse ml-auto">
+                            {pendingTransferCount}
+                          </span>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

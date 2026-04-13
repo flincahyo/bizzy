@@ -46,6 +46,7 @@ interface TenantSidebarProps {
   appsSubscription?: AppsSubscription;
   userAvatar?: string;
   userName?: string;
+  pendingTransferCount?: number;
 }
 
 const navItems = [
@@ -64,6 +65,7 @@ export function TenantSidebar({
   appsSubscription = DEFAULT_SUBSCRIPTION,
   userAvatar,
   userName = "Owner",
+  pendingTransferCount = 0,
 }: TenantSidebarProps) {
   const pathname = usePathname();
 
@@ -147,9 +149,16 @@ export function TenantSidebar({
                       isActive={isActive}
                       tooltip={item.title}
                     >
-                      <Link href={href} prefetch={true}>
-                        <item.icon />
-                        <span>{item.title}</span>
+                      <Link href={href} prefetch={true} className="flex items-center justify-between w-full">
+                        <div className="flex items-center gap-2">
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </div>
+                        {item.title === "Gudang" && pendingTransferCount > 0 && (
+                          <span className="bg-red-500 text-white text-[10px] items-center justify-center font-bold px-1.5 py-0.5 rounded-full animate-pulse ml-auto">
+                            {pendingTransferCount}
+                          </span>
+                        )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -165,7 +174,7 @@ export function TenantSidebar({
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="Pengaturan">
-                  <Link href={`${base}/settings`}>
+                  <Link href={`${base}/settings`} prefetch={true}>
                     <Settings />
                     <span>Pengaturan</span>
                   </Link>
