@@ -9,7 +9,12 @@ const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "bizzy.sbs";
 
 export default async function LoginPage() {
   const headersList = await headers();
-  const host = headersList.get("host") ?? "";
+
+  // In Vercel production, the real user-facing domain comes via x-forwarded-host
+  // This matches the same logic used in proxy.ts
+  const forwardedHost = headersList.get("x-forwarded-host");
+  const hostHeader = headersList.get("host") ?? "";
+  const host = forwardedHost ?? hostHeader;
   const hostname = host.split(":")[0];
 
   // Detect if this login page is accessed from a tenant subdomain
