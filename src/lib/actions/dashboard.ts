@@ -5,6 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePath } from "next/cache";
 import { v4 as uuidv4 } from "uuid";
 import { INVENTORY_TIERS, POS_TIERS, AppsSubscription, DEFAULT_SUBSCRIPTION } from "@/lib/features";
+import bcrypt from "bcryptjs";
+import { createStaffSession, setStaffSessionCookie, clearStaffSession, StaffRole, STAFF_DEFAULT_REDIRECT } from "@/lib/staff-session";
 
 // ─── PRODUCTS ────────────────────────────────────────────────────────────────
 
@@ -249,14 +251,15 @@ export async function createStaff(formData: FormData) {
     }
   }
 
-  // PIN stored as bcrypt hash in real app. For now we store plaintext as placeholder.
-  // In production: const pinHash = await bcrypt.hash(pin, 10);
+  // Hash PIN with bcrypt
+  const pinHash = await bcrypt.hash(pin, 10);
+
   const { error } = await admin.from("staff_accounts").insert({
     organization_id: orgId,
     username,
     full_name: fullName,
     role,
-    pin_hash: pin, // TODO: hash this with bcrypt in production
+    pin_hash: pinHash,
     is_active: true,
   });
 
@@ -270,9 +273,69 @@ export async function createStaff(formData: FormData) {
 
 export async function deleteStaff(staffId: string, slug: string) {
   const admin = createAdminClient();
-  const { error } = await admin.from("staff_accounts").update({ is_active: false }).eq("id", staffId);
+  const { error } = await admin.from("staff_accounts").update({ is_active: false, session_token: null, session_expires_at: null }).eq("id", staffId);
   if (error) throw new Error(error.message);
   revalidatePath(`/tenant/${slug}/staff`);
+}
+
+export async function updateStaffPin(staffId: string, newPin: string, slug: string) {
+  const admin = createAdminClient();
+  const pinHash = await bcrypt.hash(newPin, 10);
+  // Revoke existing sessions on PIN change
+  const { error } = await admin.from("staff_accounts")
+    .update({ pin_hash: pinHash, session_token: null, session_expires_at: null })
+    .eq("id", staffId);
+  if (error) throw new Error(error.message);
+  revalidatePath(`/tenant/${slug}/staff`);
+}
+
+// ─── STAFF LOGIN ───────────────────────────────────────────────────────────────
+
+export async function staffLogin(formData: FormData): Promise<{ role: StaffRole; redirectTo: string }> {
+  const admin = createAdminClient();
+  const username = formData.get("username") as string;
+  const pin = formData.get("pin") as string;
+  const orgSlug = formData.get("orgSlug") as string;
+
+  if (!username || !pin || !orgSlug) throw new Error("Data login tidak lengkap.");
+
+  // Find org by slug
+  const { data: org } = await admin.from("organizations").select("id, name").eq("subdomain_slug", orgSlug).single();
+  if (!org) throw new Error("Toko tidak ditemukan.");
+
+  // Find staff account
+  const { data: staff } = await admin
+    .from("staff_accounts")
+    .select("id, pin_hash, role, full_name, is_active")
+    .eq("organization_id", org.id)
+    .eq("username", username)
+    .eq("is_active", true)
+    .single();
+
+  if (!staff) throw new Error("Username atau PIN salah.");
+
+  // Verify PIN
+  const isValid = await bcrypt.compare(pin, staff.pin_hash);
+  if (!isValid) throw new Error("Username atau PIN salah.");
+
+  const role = staff.role as StaffRole;
+  const payload = {
+    staffId: staff.id,
+    orgId: org.id,
+    orgSlug,
+    role,
+    fullName: staff.full_name,
+  };
+
+  // Create session token in DB
+  const token = await createStaffSession(payload);
+
+  // Set cookie
+  const isLocal = process.env.NODE_ENV === "development";
+  await setStaffSessionCookie(token, payload, isLocal);
+
+  const redirectTo = STAFF_DEFAULT_REDIRECT[role] || "/";
+  return { role, redirectTo };
 }
 
 // ─── SETTINGS ─────────────────────────────────────────────────────────────────

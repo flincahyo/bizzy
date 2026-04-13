@@ -1,5 +1,6 @@
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { TenantSidebar } from "@/components/dashboard/TenantSidebar";
+import { StaffSidebar } from "@/components/dashboard/StaffSidebar";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,10 +11,12 @@ import {
 } from "@/components/ui/breadcrumb";
 import { ModeToggle } from "@/components/mode-toggle";
 import { redirect, notFound } from "next/navigation";
+import { headers } from "next/headers";
 
 import { getTenantProfileBySlug } from "@/lib/services/tenant";
 
 import { AppsSubscription, DEFAULT_SUBSCRIPTION } from "@/lib/features";
+import { StaffRole } from "@/lib/staff-session";
 
 interface TenantLayoutProps {
   children: React.ReactNode;
@@ -22,14 +25,19 @@ interface TenantLayoutProps {
 
 export default async function TenantLayout({ children, params }: TenantLayoutProps) {
   const { slug } = await params;
+  const headersList = await headers();
+
+  // Detect staff mode via headers set by proxy middleware
+  const staffRole = headersList.get("x-staff-role") as StaffRole | null;
+  const staffName = headersList.get("x-staff-name") ?? undefined;
 
   const data = await getTenantProfileBySlug(slug);
 
   // Org doesn't exist at all → 404
   if (!data) return notFound();
 
-  // User is logged in but NOT a member of this org → 403 redirect to root domain
-  if (data.profile && !data.isMember) {
+  // For owner access: verify membership
+  if (!staffRole && data.profile && !data.isMember) {
     const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "bizzy.sbs";
     redirect(`https://${rootDomain}/unauthorized`);
   }
@@ -40,6 +48,23 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
   const userName = data?.profile?.full_name || "Pemilik";
   const avatarUrl = data?.profile?.avatar_url || "";
 
+  // ── Staff Layout ─────────────────────────────────────────────────────────
+  if (staffRole) {
+    return (
+      <div className="flex h-screen overflow-hidden">
+        <StaffSidebar role={staffRole} orgName={orgName} staffName={staffName} />
+        <main className="flex-1 overflow-auto">
+          <header className="flex h-14 items-center justify-between border-b px-4">
+            <span className="text-sm font-medium text-muted-foreground">{orgName}</span>
+            <ModeToggle />
+          </header>
+          <div className="p-4">{children}</div>
+        </main>
+      </div>
+    );
+  }
+
+  // ── Owner Layout ─────────────────────────────────────────────────────────
   return (
     <SidebarProvider>
       <TenantSidebar

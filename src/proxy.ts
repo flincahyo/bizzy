@@ -1,6 +1,8 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { getStaffSessionFromRequest, isPathAllowedForRole, STAFF_DEFAULT_REDIRECT, StaffRole } from "@/lib/staff-session";
+
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "bizzy.id";
 
@@ -74,31 +76,69 @@ export async function proxy(request: NextRequest) {
 
   // ─── Tenant Route Rewriting ──────────────────────────────────────────────
   if (tenantSlug) {
-    // Exclude authentication and system APIs from tenant scope rewriting
-    if (url.pathname === "/login" || url.pathname === "/unauthorized" || url.pathname.startsWith("/auth/") || url.pathname.startsWith("/api/")) {
+    // Exclude auth/api paths from tenant rewriting
+    if (
+      url.pathname === "/login" ||
+      url.pathname === "/unauthorized" ||
+      url.pathname.startsWith("/auth/") ||
+      url.pathname.startsWith("/api/")
+    ) {
       return supabaseResponse;
     }
 
-    if (!user) {
-      // If trying to access a tenant but not logged in, redirect to login
-      const loginUrl = request.nextUrl.clone();
-      loginUrl.pathname = "/login";
-      return NextResponse.redirect(loginUrl);
+    // ── Owner Session (Supabase Auth) ─────────────────────────────────────
+    if (user) {
+      // Owner has full access — rewrite path and serve
+      const newPath = `/tenant/${tenantSlug}${url.pathname === "/" ? "" : url.pathname}`;
+      url.pathname = newPath || `/tenant/${tenantSlug}`;
+      const rewriteResponse = NextResponse.rewrite(url);
+      supabaseResponse.cookies.getAll().forEach((cookie) =>
+        rewriteResponse.cookies.set(cookie.name, cookie.value)
+      );
+      return rewriteResponse;
     }
 
-    // Rewrite /any-path -> /tenant/[slug]/any-path internally
-    // Browser URL stays as toko.bizzy.id/any-path (unchanged)
-    const newPath = `/tenant/${tenantSlug}${url.pathname}`;
-    url.pathname = newPath;
+    // ── Staff Session (Custom Cookie) ─────────────────────────────────────
+    const staffSession = getStaffSessionFromRequest(request);
 
-    const rewriteResponse = NextResponse.rewrite(url);
+    if (staffSession) {
+      // Verify the staff belongs to THIS tenant subdomain
+      if (staffSession.orgSlug !== tenantSlug) {
+        // Staff from a different tenant trying to access → kick to login
+        const loginUrl = request.nextUrl.clone();
+        loginUrl.pathname = "/login";
+        return NextResponse.redirect(loginUrl);
+      }
 
-    // Copy over the supabase session cookies to the rewrite response
-    supabaseResponse.cookies.getAll().forEach((cookie) => {
-      rewriteResponse.cookies.set(cookie.name, cookie.value);
-    });
+      const role = staffSession.role as StaffRole;
+      const currentPath = url.pathname === "/" ? "/" : url.pathname;
 
-    return rewriteResponse;
+      // Check if this role is allowed on this path
+      if (!isPathAllowedForRole(currentPath, role)) {
+        // Redirect to their default page
+        const defaultPath = STAFF_DEFAULT_REDIRECT[role] || "/";
+        const redirectUrl = request.nextUrl.clone();
+        redirectUrl.pathname = defaultPath;
+        return NextResponse.redirect(redirectUrl);
+      }
+
+      // Add staff info headers so layouts can detect staff mode
+      const newPath = `/tenant/${tenantSlug}${url.pathname === "/" ? "" : url.pathname}`;
+      url.pathname = newPath || `/tenant/${tenantSlug}`;
+      const rewriteResponse = NextResponse.rewrite(url);
+      rewriteResponse.headers.set("x-staff-role", role);
+      rewriteResponse.headers.set("x-staff-id", staffSession.staffId);
+      rewriteResponse.headers.set("x-staff-name", staffSession.fullName);
+      supabaseResponse.cookies.getAll().forEach((cookie) =>
+        rewriteResponse.cookies.set(cookie.name, cookie.value)
+      );
+      return rewriteResponse;
+    }
+
+    // ── No Session → Redirect to tenant login ──────────────────────────────
+    const loginUrl = request.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    return NextResponse.redirect(loginUrl);
   }
 
   // ─── System Route Rewriting (Admin) ────────────────────────────────────
