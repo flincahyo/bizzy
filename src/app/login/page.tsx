@@ -1,35 +1,36 @@
 import { headers } from "next/headers";
-import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { redirect } from "next/navigation";
-import { OwnerLoginForm } from "@/components/dashboard/OwnerLoginForm";
-import { StaffLoginForm } from "@/components/dashboard/StaffLoginForm";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { TenantLoginForm } from "@/components/dashboard/TenantLoginForm";
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN ?? "bizzy.sbs";
 
 export default async function LoginPage() {
   const headersList = await headers();
 
-  // In Vercel production, the real user-facing domain comes via x-forwarded-host
-  // This matches the same logic used in proxy.ts
+  // Vercel passes the real user-facing domain via x-forwarded-host
   const forwardedHost = headersList.get("x-forwarded-host");
-  const hostHeader = headersList.get("host") ?? "";
-  const host = forwardedHost ?? hostHeader;
-  const hostname = host.split(":")[0];
+  const fallbackHost = headersList.get("host") ?? "";
+  const hostname = (forwardedHost ?? fallbackHost).split(":")[0];
 
-  // Detect if this login page is accessed from a tenant subdomain
-  const isTenantSubdomain =
-    hostname !== "localhost" &&
-    hostname !== ROOT_DOMAIN &&
-    hostname.endsWith(`.${ROOT_DOMAIN}`);
+  // If accessed from the root domain → redirect to landing page
+  // All logins (owner + staff) happen from the tenant subdomain
+  const isRootDomain =
+    hostname === ROOT_DOMAIN ||
+    hostname === "localhost" ||
+    hostname === "127.0.0.1";
 
-  const orgSlug = isTenantSubdomain
-    ? hostname.replace(`.${ROOT_DOMAIN}`, "")
-    : null;
+  if (isRootDomain) {
+    // Redirect to landing page — login only via tenant subdomain
+    redirect("/");
+  }
 
-  // Fetch org name if on subdomain
+  // Extract subdomain slug from hostname: tokokedai.bizzy.sbs → tokokedai
+  const orgSlug = hostname.replace(`.${ROOT_DOMAIN}`, "");
+
+  // Fetch org name for display
   let orgName: string | undefined;
-  if (orgSlug) {
+  try {
     const admin = createAdminClient();
     const { data: org } = await admin
       .from("organizations")
@@ -37,27 +38,11 @@ export default async function LoginPage() {
       .eq("subdomain_slug", orgSlug)
       .single();
     orgName = org?.name;
-  }
+  } catch {}
 
   return (
-    <div className="flex min-h-svh w-full items-center justify-center bg-background p-6 md:p-10">
-      {isTenantSubdomain && orgSlug ? (
-        // ── Staff Login (Subdomain) ──────────────────────────────────────────
-        <div className="flex flex-col items-center gap-6">
-          <StaffLoginForm orgSlug={orgSlug} orgName={orgName} />
-          <p className="text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Bizzy SaaS. Hak Cipta Dilindungi.
-          </p>
-        </div>
-      ) : (
-        // ── Owner Login (Root Domain) ────────────────────────────────────────
-        <div className="w-full max-w-sm flex flex-col gap-6">
-          <OwnerLoginForm />
-          <p className="text-center text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Bizzy SaaS. Hak Cipta Dilindungi.
-          </p>
-        </div>
-      )}
+    <div className="flex min-h-svh w-full items-center justify-center bg-background p-6">
+      <TenantLoginForm orgSlug={orgSlug} orgName={orgName} />
     </div>
   );
 }

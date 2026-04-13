@@ -60,10 +60,10 @@ const Navbar = () => {
         <div className="hidden items-center space-x-4 md:flex">
           <ModeToggle />
           <Button variant="ghost" asChild>
-            <Link href="/login">Masuk</Link>
+            <Link href="/find-store">Masuk</Link>
           </Button>
           <Button asChild>
-            <Link href="/login">Coba Gratis</Link>
+            <Link href="/register">Coba Gratis</Link>
           </Button>
         </div>
 
@@ -92,10 +92,10 @@ const Navbar = () => {
             ))}
             <div className="flex flex-col space-y-3 pt-4">
               <Button variant="outline" className="w-full" asChild>
-                <Link href="/login">Masuk</Link>
+                <Link href="/find-store">Masuk</Link>
               </Button>
               <Button className="w-full" asChild>
-                <Link href="/login">Coba Gratis</Link>
+                <Link href="/register">Coba Gratis</Link>
               </Button>
             </div>
           </div>
