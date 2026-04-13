@@ -24,6 +24,9 @@ export async function GET(request: Request) {
 
         let redirectUrl = `${origin}${next}`;
         
+        const forwardedHost = request.headers.get("x-forwarded-host");
+        const isLocalEnv = process.env.NODE_ENV === "development";
+        
         // If they have a tenant organization, redirect to the first one available
         if (memberships && memberships.length > 0 && memberships[0].organizations) {
            const slug = Array.isArray(memberships[0].organizations) 
@@ -31,15 +34,16 @@ export async function GET(request: Request) {
                : (memberships[0].organizations as any).subdomain_slug;
            
            if (slug) {
-             redirectUrl = `${origin}/tenant/${slug}`;
+             const protocol = isLocalEnv ? "http://" : "https://";
+             const hostDomain = isLocalEnv 
+               ? "localhost:3000" 
+               : process.env.NEXT_PUBLIC_ROOT_DOMAIN || "bizzy.sbs";
+             redirectUrl = `${protocol}${slug}.${hostDomain}`;
            }
         } else if (next === "/") {
            // Default fallback when they don't have a specific `next` and no tenant
            redirectUrl = `${origin}/onboarding`; // or you can keep it as root if onboarding doesn't exist
         }
-
-        const forwardedHost = request.headers.get("x-forwarded-host");
-        const isLocalEnv = process.env.NODE_ENV === "development";
         
         if (isLocalEnv) {
           return NextResponse.redirect(redirectUrl);
