@@ -26,8 +26,8 @@ export async function GET(request: Request) {
         
         const forwardedHost = request.headers.get("x-forwarded-host");
         const isLocalEnv = process.env.NODE_ENV === "development";
-        
-        // If they have a tenant organization, redirect to the first one available
+
+        // If they have a tenant organization, redirect directly to their subdomain
         if (memberships && memberships.length > 0 && memberships[0].organizations) {
            const slug = Array.isArray(memberships[0].organizations) 
                ? memberships[0].organizations[0].subdomain_slug 
@@ -38,17 +38,22 @@ export async function GET(request: Request) {
              const hostDomain = isLocalEnv 
                ? "localhost:3000" 
                : process.env.NEXT_PUBLIC_ROOT_DOMAIN || "bizzy.sbs";
-             redirectUrl = `${protocol}${slug}.${hostDomain}`;
+             // Build subdomain URL and return directly — do NOT override hostname
+             const subdomainUrl = isLocalEnv
+               ? `${protocol}${hostDomain}/tenant/${slug}`
+               : `${protocol}${slug}.${hostDomain}`;
+             return NextResponse.redirect(subdomainUrl);
            }
-        } else if (next === "/") {
-           // Default fallback when they don't have a specific `next` and no tenant
-           redirectUrl = `${origin}/onboarding`; // or you can keep it as root if onboarding doesn't exist
+        }
+
+        // No tenant found, redirect to onboarding
+        if (next === "/") {
+           redirectUrl = `${origin}/onboarding`;
         }
         
         if (isLocalEnv) {
           return NextResponse.redirect(redirectUrl);
         } else if (forwardedHost) {
-          // Replace base domain with forwardedHost
           const urlObj = new URL(redirectUrl);
           urlObj.hostname = forwardedHost;
           urlObj.port = '';
