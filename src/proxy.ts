@@ -96,25 +96,14 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(callbackUrl);
     }
 
-    // ── Owner Session (Supabase Auth) ─────────────────────────────────────
-    if (user) {
-      // Owner has full access — rewrite path and serve
-      const newPath = `/tenant/${tenantSlug}${url.pathname === "/" ? "" : url.pathname}`;
-      url.pathname = newPath || `/tenant/${tenantSlug}`;
-      const rewriteResponse = NextResponse.rewrite(url);
-      supabaseResponse.cookies.getAll().forEach((cookie) =>
-        rewriteResponse.cookies.set(cookie.name, cookie.value)
-      );
-      return rewriteResponse;
-    }
-
-    // ── Staff Session (Custom Cookie) ─────────────────────────────────────
+    // ── Staff Session — CHECK FIRST ───────────────────────────────────────
+    // Staff session takes priority over Supabase owner session.
+    // This prevents owner browser session from overriding a staff login.
     const staffSession = getStaffSessionFromRequest(request);
 
     if (staffSession) {
-      // Verify the staff belongs to THIS tenant subdomain
+      // Verify the staff session belongs to THIS subdomain
       if (staffSession.orgSlug !== tenantSlug) {
-        // Staff from a different tenant trying to access → kick to login
         const loginUrl = request.nextUrl.clone();
         loginUrl.pathname = "/login";
         return NextResponse.redirect(loginUrl);
@@ -123,30 +112,39 @@ export async function proxy(request: NextRequest) {
       const role = staffSession.role as StaffRole;
       const currentPath = url.pathname === "/" ? "/" : url.pathname;
 
-      // Check if this role is allowed on this path
       if (!isPathAllowedForRole(currentPath, role)) {
-        // Redirect to their default page
-        const defaultPath = STAFF_DEFAULT_REDIRECT[role] || "/";
+        const defaultPath = STAFF_DEFAULT_REDIRECT[role] || "/pos";
         const redirectUrl = request.nextUrl.clone();
         redirectUrl.pathname = defaultPath;
         return NextResponse.redirect(redirectUrl);
       }
 
-      // Pass staff info as REQUEST headers so Server Components can read them via headers()
-      const newPath = `/tenant/${tenantSlug}${url.pathname === "/" ? "" : url.pathname}`;
-      url.pathname = newPath || `/tenant/${tenantSlug}`;
-      const requestHeaders = new Headers(request.headers);
-      requestHeaders.set("x-staff-role", role);
-      requestHeaders.set("x-staff-id", staffSession.staffId);
-      requestHeaders.set("x-staff-name", staffSession.fullName);
-      const rewriteResponse = NextResponse.rewrite(url, {
-        request: { headers: requestHeaders },
+      const staffPath = `/tenant/${tenantSlug}${url.pathname === "/" ? "" : url.pathname}`;
+      url.pathname = staffPath || `/tenant/${tenantSlug}`;
+      const staffHeaders = new Headers(request.headers);
+      staffHeaders.set("x-staff-role", role);
+      staffHeaders.set("x-staff-id", staffSession.staffId);
+      staffHeaders.set("x-staff-name", staffSession.fullName);
+      const staffRewrite = NextResponse.rewrite(url, {
+        request: { headers: staffHeaders },
       });
       supabaseResponse.cookies.getAll().forEach((cookie) =>
-        rewriteResponse.cookies.set(cookie.name, cookie.value)
+        staffRewrite.cookies.set(cookie.name, cookie.value)
       );
-      return rewriteResponse;
+      return staffRewrite;
     }
+
+    // ── Owner Session (Supabase Auth) — FALLBACK ─────────────────────────
+    if (user) {
+      const ownerPath = `/tenant/${tenantSlug}${url.pathname === "/" ? "" : url.pathname}`;
+      url.pathname = ownerPath || `/tenant/${tenantSlug}`;
+      const ownerRewrite = NextResponse.rewrite(url);
+      supabaseResponse.cookies.getAll().forEach((cookie) =>
+        ownerRewrite.cookies.set(cookie.name, cookie.value)
+      );
+      return ownerRewrite;
+    }
+
 
     // ── No Session → Redirect to tenant login ──────────────────────────────
     const loginUrl = request.nextUrl.clone();
