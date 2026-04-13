@@ -28,9 +28,10 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
   // Org doesn't exist at all → 404
   if (!data) return notFound();
 
-  // User is logged in but NOT a member of this org → 403
+  // User is logged in but NOT a member of this org → 403 redirect to root domain
   if (data.profile && !data.isMember) {
-    redirect("/unauthorized");
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "bizzy.sbs";
+    redirect(`https://${rootDomain}/unauthorized`);
   }
 
   // Provide fallbacks
