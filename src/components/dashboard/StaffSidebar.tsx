@@ -1,15 +1,41 @@
 "use client";
 
+import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ShoppingCart, Package, Warehouse, BarChart3, LogOut, Building2,
+  ShoppingCart,
+  Package,
+  Warehouse,
+  BarChart3,
+  LogOut,
+  Building2,
+  ChevronsUpDown,
 } from "lucide-react";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
 
 type StaffRole = "cashier" | "warehouse_staff" | "admin";
-
 
 interface StaffSidebarProps {
   role: StaffRole;
@@ -48,6 +74,10 @@ export function StaffSidebar({ role, orgName = "Toko", staffName }: StaffSidebar
     ? !window.location.hostname.includes("localhost") && window.location.hostname.split(".").length >= 3
     : false;
 
+  const getIsActive = (itemHref: string) => {
+    return pathname === itemHref || pathname.startsWith(itemHref + "/");
+  };
+
   const handleLogout = async () => {
     try {
       const supabase = createClient();
@@ -59,59 +89,111 @@ export function StaffSidebar({ role, orgName = "Toko", staffName }: StaffSidebar
   };
 
   return (
-    <div className="flex flex-col h-full w-64 border-r bg-sidebar text-sidebar-foreground">
-      {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b">
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-          <Building2 className="size-4" />
-        </div>
-        <div className="flex flex-col">
-          <span className="text-sm font-semibold truncate">{orgName}</span>
-          <span className="text-xs text-muted-foreground">{ROLE_LABEL[role]}</span>
-        </div>
-      </div>
+    <Sidebar collapsible="icon">
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton
+                  size="lg"
+                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                >
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                    <Building2 className="size-4" />
+                  </div>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-semibold text-foreground">{orgName}</span>
+                    <span className="truncate text-xs capitalize">{ROLE_LABEL[role]}</span>
+                  </div>
+                  <ChevronsUpDown className="ml-auto size-4" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+                align="start"
+                side="bottom"
+                sideOffset={4}
+              >
+                <DropdownMenuItem className="gap-2 p-2">
+                  <div className="flex size-6 items-center justify-center rounded-md border">
+                    <Building2 className="size-4 shrink-0" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span>{orgName}</span>
+                    <span className="text-xs text-muted-foreground">{ROLE_LABEL[role]}</span>
+                  </div>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
 
-      {/* Nav */}
-      <nav className="flex-1 p-3 space-y-1">
-        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-2 pb-2">Menu</p>
-        {navItems.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              }`}
-            >
-              <item.icon className="h-4 w-4" />
-              {item.title}
-            </Link>
-          );
-        })}
-      </nav>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel>Menu</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {navItems.map((item) => {
+                const isActive = getIsActive(item.href);
 
-      {/* Footer */}
-      <div className="p-3 border-t space-y-2">
-        <div className="flex items-center gap-3 px-2 py-1">
-          <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center text-xs font-bold uppercase">
-            {staffName?.[0] ?? "S"}
-          </div>
-          <div className="flex flex-col leading-tight">
-            <span className="text-xs font-medium truncate">{staffName ?? "Karyawan"}</span>
-            <span className="text-xs text-muted-foreground">{ROLE_LABEL[role]}</span>
-          </div>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
-        >
-          <LogOut className="h-4 w-4" />
-          Keluar
-        </button>
-      </div>
-    </div>
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={isActive}
+                      tooltip={item.title}
+                    >
+                      <Link href={item.href}>
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarMenuButton
+                  size="lg"
+                  className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+                >
+                  <Avatar className="h-8 w-8 rounded-lg">
+                    <AvatarFallback className="rounded-lg">
+                      {staffName?.[0]?.toUpperCase() ?? "S"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-semibold">{staffName ?? "Karyawan"}</span>
+                    <span className="truncate text-xs">{ROLE_LABEL[role]}</span>
+                  </div>
+                  <ChevronsUpDown className="ml-auto size-4" />
+                </SidebarMenuButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+                side="bottom"
+                align="end"
+                sideOffset={4}
+              >
+                <DropdownMenuItem onSelect={handleLogout} className="text-destructive focus:bg-destructive/10 focus:text-destructive">
+                  <LogOut />
+                  <span>Keluar</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+    </Sidebar>
   );
 }
