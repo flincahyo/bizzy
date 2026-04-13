@@ -1,7 +1,8 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export async function getTenantProfileBySlug(slug: string) {
+export const getTenantProfileBySlug = cache(async (slug: string) => {
   // Use admin client for org lookup so RLS doesn't block staff users
   // (staff are Supabase users but are NOT in the memberships table)
   const admin = createAdminClient();
@@ -41,7 +42,7 @@ export async function getTenantProfileBySlug(slug: string) {
     .single();
 
   return { org, profile, isMember: !!membership };
-}
+});
 
 export async function getTenantDashboardStats(orgId: string) {
   const supabase = await createClient();

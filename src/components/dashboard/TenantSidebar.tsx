@@ -147,7 +147,7 @@ export function TenantSidebar({
                       isActive={isActive}
                       tooltip={item.title}
                     >
-                      <Link href={href}>
+                      <Link href={href} prefetch={true}>
                         <item.icon />
                         <span>{item.title}</span>
                       </Link>
