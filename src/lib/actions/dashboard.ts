@@ -376,8 +376,23 @@ export async function deleteAccount() {
   const orgIds = memberships?.map(m => m.organization_id) || [];
 
   if (orgIds.length > 0) {
-    // 1. Delete transactions explicitly first. This cascades to transaction_items.
-    // By removing transaction_items first, products can be deleted safely without foreign key violations.
+    // 0. Delete all staff Supabase auth users for these orgs
+    // (staff are real Supabase users with synthetic emails — must be cleaned up)
+    const { data: staffAccounts } = await adminClient
+      .from("staff_accounts")
+      .select("supabase_user_id")
+      .in("organization_id", orgIds)
+      .not("supabase_user_id", "is", null);
+
+    if (staffAccounts && staffAccounts.length > 0) {
+      await Promise.all(
+        staffAccounts
+          .filter((s) => s.supabase_user_id)
+          .map((s) => adminClient.auth.admin.deleteUser(s.supabase_user_id!))
+      );
+    }
+
+    // 1. Delete transactions explicitly first.
     await adminClient.from("transactions").delete().in("organization_id", orgIds);
     
     // 2. Delete inventory explicitly
@@ -386,7 +401,7 @@ export async function deleteAccount() {
     // 3. Delete products explicitly
     await adminClient.from("products").delete().in("organization_id", orgIds);
 
-    // 4. Finally, delete organizations
+    // 4. Delete organizations (cascades to staff_accounts, memberships, etc.)
     const { error: orgError } = await adminClient
       .from("organizations")
       .delete()

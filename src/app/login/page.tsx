@@ -24,7 +24,7 @@ export default async function LoginPage() {
   // Extract orgSlug from subdomain
   const orgSlug = hostname.replace(`.${ROOT_DOMAIN}`, "");
 
-  // Fetch org display name
+  // Fetch org — if deleted/non-existent, redirect to root (subdomain is dead)
   let orgName: string | undefined;
   try {
     const admin = createAdminClient();
@@ -34,7 +34,10 @@ export default async function LoginPage() {
       .eq("subdomain_slug", orgSlug)
       .single();
     orgName = org?.name;
-  } catch {}
+  } catch { }
+
+  // Org not found → subdomain no longer active, bounce to root
+  if (!orgName) redirect(`https://${ROOT_DOMAIN}`);
 
   return (
     <div className="flex min-h-svh w-full items-center justify-center bg-background p-6">
