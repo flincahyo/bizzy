@@ -4,8 +4,8 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { ModeToggle } from "@/components/mode-toggle";
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -28,30 +28,28 @@ const Navbar = () => {
   return (
     <nav
       className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b",
+        "fixed left-0 right-0 top-0 z-50 border-b transition-all duration-300",
         isScrolled
-          ? "bg-white/80 backdrop-blur-md border-slate-200 py-3"
-          : "bg-transparent border-transparent py-5"
+          ? "bg-background/80 py-3 backdrop-blur-md"
+          : "border-transparent bg-transparent py-5"
       )}
     >
-      <div className="container mx-auto px-6 flex items-center justify-between">
+      <div className="container mx-auto flex items-center justify-between px-6">
         {/* Logo */}
         <Link href="/" className="flex items-center space-x-2">
-          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-            <span className="text-white font-bold text-2xl font-heading">B</span>
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary shadow-sm">
+            <span className="text-2xl font-bold text-primary-foreground">B</span>
           </div>
-          <span className="text-2xl font-bold font-heading tracking-tight text-slate-900">
-            bizzy
-          </span>
+          <span className="text-2xl font-bold tracking-tight">bizzy</span>
         </Link>
 
         {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center space-x-8">
+        <div className="hidden items-center space-x-8 md:flex">
           {navLinks.map((link) => (
             <Link
               key={link.name}
               href={link.href}
-              className="text-sm font-medium text-slate-600 hover:text-primary transition-colors"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
             >
               {link.name}
             </Link>
@@ -59,18 +57,19 @@ const Navbar = () => {
         </div>
 
         {/* Auth Buttons */}
-        <div className="hidden md:flex items-center space-x-4">
-          <Button variant="ghost" className="text-sm font-medium">
-            Masuk
+        <div className="hidden items-center space-x-4 md:flex">
+          <ModeToggle />
+          <Button variant="ghost" asChild>
+            <Link href="/login">Masuk</Link>
           </Button>
-          <Button className="rounded-full px-6 shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all">
-            Coba Gratis
+          <Button asChild>
+            <Link href="/login">Coba Gratis</Link>
           </Button>
         </div>
 
         {/* Mobile Toggle */}
         <button
-          className="md:hidden p-2 text-slate-600"
+          className="p-2 text-foreground md:hidden"
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
         >
           {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -78,35 +77,30 @@ const Navbar = () => {
       </div>
 
       {/* Mobile Menu */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden bg-white border-b border-slate-100 overflow-hidden"
-          >
-            <div className="container mx-auto px-6 py-6 flex flex-col space-y-4">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.name}
-                  href={link.href}
-                  className="text-lg font-medium text-slate-600"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                >
-                  {link.name}
-                </Link>
-              ))}
-              <div className="pt-4 flex flex-col space-y-3">
-                <Button variant="outline" className="w-full rounded-xl">
-                  Masuk
-                </Button>
-                <Button className="w-full rounded-xl">Coba Gratis</Button>
-              </div>
+      {isMobileMenuOpen && (
+        <div className="border-b bg-background md:hidden">
+          <div className="container mx-auto flex flex-col space-y-4 px-6 py-6">
+            {navLinks.map((link) => (
+              <Link
+                key={link.name}
+                href={link.href}
+                className="text-lg font-medium text-muted-foreground"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                {link.name}
+              </Link>
+            ))}
+            <div className="flex flex-col space-y-3 pt-4">
+              <Button variant="outline" className="w-full" asChild>
+                <Link href="/login">Masuk</Link>
+              </Button>
+              <Button className="w-full" asChild>
+                <Link href="/login">Coba Gratis</Link>
+              </Button>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

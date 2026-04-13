@@ -104,8 +104,10 @@ export default function AdminCustomersPage() {
                   </TableCell>
                   <TableCell className="text-right pr-6">
                     <DropdownMenu>
-                      <DropdownMenuTrigger render={<Button variant="ghost" size="icon" />}>
-                        <MoreHorizontal size={14} />
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal size={14} />
+                        </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem 

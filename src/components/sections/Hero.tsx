@@ -1,101 +1,77 @@
-"use client";
-
-import React from "react";
 import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
 import { ArrowRight, Play, CheckCircle2 } from "lucide-react";
+import Link from "next/link";
 
 const Hero = () => {
   return (
-    <section className="relative min-h-[90vh] flex items-center pt-20 overflow-hidden">
-      {/* Background Mesh Gradients */}
-      <div className="absolute inset-0 -z-10 overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-[10%] right-[-5%] w-[35%] h-[35%] bg-accent/20 rounded-full blur-[100px]" />
-        <div className="absolute top-[20%] right-[10%] w-[25%] h-[25%] bg-indigo-200/30 rounded-full blur-[80px]" />
+    <section className="relative flex min-h-[90vh] flex-col items-center justify-center overflow-hidden py-24 text-center md:py-32">
+      {/* Subtle Animated Background */}
+      <div className="absolute inset-0 -z-10 bg-background overflow-hidden">
+        <style>{`
+          @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(40px, -60px) scale(1.05); }
+            66% { transform: translate(-30px, 30px) scale(0.95); }
+          }
+          .animate-float-1 { animation: float 15s ease-in-out infinite; }
+          .animate-float-2 { animation: float 18s ease-in-out infinite; animation-delay: -5s; }
+          .animate-float-3 { animation: float 20s ease-in-out infinite; animation-delay: -10s; }
+        `}</style>
+
+        <div className="absolute left-1/2 top-1/4 -translate-x-1/2 -translate-y-1/2">
+          <div className="animate-float-1 h-[24rem] w-[40rem] rounded-full bg-primary/40 blur-3xl opacity-100" />
+        </div>
+        <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/4">
+          <div className="animate-float-2 h-[30rem] w-[30rem] rounded-full bg-indigo-500/40 blur-3xl opacity-100" />
+        </div>
+        <div className="absolute left-0 bottom-1/4 translate-y-1/4 -translate-x-1/4">
+          <div className="animate-float-3 h-[25rem] w-[25rem] rounded-full bg-blue-500/40 blur-3xl opacity-100" />
+        </div>
+
+        {/* Gradient fade to prevent harsh cutoff at the bottom section transition */}
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background to-transparent" />
       </div>
 
-      <div className="container mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-        {/* Left Content */}
-        <motion.div
-          initial={{ opacity: 0, x: -30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="flex flex-col space-y-8"
-        >
-          <div className="inline-flex items-center space-x-2 bg-indigo-50 border border-indigo-100 rounded-full px-4 py-1.5 w-fit">
-            <span className="flex h-2 w-2 rounded-full bg-primary animate-ping" />
-            <span className="text-xs font-bold text-primary uppercase tracking-wider">
-              Baru: Dashboard AI untuk UMKM
-            </span>
-          </div>
+      <div className="container mx-auto flex flex-col items-center space-y-10 relative z-10">
+        <div className="flex items-center gap-2 rounded-full border bg-background/80 backdrop-blur-sm px-3 py-1 text-sm font-medium shadow-sm">
+          <span className="flex h-2 w-2 rounded-full bg-primary animate-pulse" />
+          Baru: Dashboard AI untuk UMKM
+        </div>
 
-          <h1 className="text-5xl md:text-7xl font-bold font-heading leading-[1.1] text-slate-900">
+        <div className="space-y-4">
+          <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
             Business Made <span className="text-primary">Easy.</span>
           </h1>
-
-          <p className="text-lg md:text-xl text-slate-600 max-w-xl leading-relaxed">
+          <p className="mx-auto max-w-[700px] text-lg text-muted-foreground sm:text-xl">
             Bizzy membantu Anda mengelola inventaris, penjualan, hingga tim dalam satu platform yang elegan. Tinggalkan cara lama, beralih ke masa depan bisnis yang lebih efisien.
           </p>
+        </div>
 
-          <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
-            <Button className="w-full sm:w-auto px-8 py-7 rounded-2xl text-lg shadow-xl shadow-primary/25 hover:shadow-primary/40 transition-all group">
+        <div className="flex flex-col gap-4 sm:flex-row">
+          <Button asChild size="lg" className="h-12 px-8 text-base shadow-lg shadow-primary/20">
+            <Link href="/login">
               Mulai Sekarang
-              <ArrowRight className="ml-2 group-hover:translate-x-1 transition-transform" size={20} />
-            </Button>
-            <Button variant="outline" className="w-full sm:w-auto px-8 py-7 rounded-2xl text-lg group">
-              <Play className="mr-2 fill-slate-900" size={18} />
-              Lihat Demo
-            </Button>
-          </div>
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="lg" className="h-12 px-8 text-base bg-background/50 backdrop-blur-md hover:bg-background">
+            <Link href="#features">
+              <Play className="mr-2 h-4 w-4" />
+              Lihat Fitur
+            </Link>
+          </Button>
+        </div>
 
-          <div className="flex items-center space-x-6 pt-4">
-            <div className="flex items-center space-x-2">
-              <CheckCircle2 className="text-emerald-500" size={18} />
-              <span className="text-sm font-medium text-slate-500">Free Trial 14 Hari</span>
-            </div>
-            <div className="flex items-center space-x-2">
-              <CheckCircle2 className="text-emerald-500" size={18} />
-              <span className="text-sm font-medium text-slate-500">Tanpa Kartu Kredit</span>
-            </div>
+        <div className="flex items-center justify-center gap-6 pt-4 text-sm font-medium text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-primary" />
+            <span>Free Trial 14 Hari</span>
           </div>
-        </motion.div>
-
-        {/* Right Preview Image - Placeholder for now with premium frame */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.2 }}
-          className="relative"
-        >
-          <div className="relative z-10 bg-white/40 backdrop-blur-sm p-4 rounded-[2.5rem] border border-white/50 shadow-2xl">
-            <div className="overflow-hidden rounded-[2rem] bg-slate-900 aspect-video relative group">
-                {/* Simulated Dashboard UI */}
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-transparent p-8">
-                    <div className="flex justify-between items-center mb-8">
-                        <div className="h-6 w-32 bg-white/20 rounded-md" />
-                        <div className="flex space-x-2">
-                            <div className="h-2 w-2 rounded-full bg-red-400" />
-                            <div className="h-2 w-2 rounded-full bg-amber-400" />
-                            <div className="h-2 w-2 rounded-full bg-emerald-400" />
-                        </div>
-                    </div>
-                    <div className="grid grid-cols-3 gap-4 mb-6">
-                        <div className="h-24 bg-white/10 rounded-xl" />
-                        <div className="h-24 bg-white/10 rounded-xl" />
-                        <div className="h-24 bg-white/10 rounded-xl" />
-                    </div>
-                    <div className="h-40 bg-white/5 rounded-xl border border-white/10" />
-                </div>
-                {/* Overlay Glow */}
-                <div className="absolute -inset-10 bg-primary/20 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
-            </div>
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-primary" />
+            <span>Tanpa Kartu Kredit</span>
           </div>
-          
-          {/* Decorative elements */}
-          <div className="absolute -top-6 -right-6 w-24 h-24 bg-accent/20 rounded-full blur-2xl animate-bounce" />
-          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-primary/10 rounded-full blur-2xl" />
-        </motion.div>
+        </div>
       </div>
     </section>
   );

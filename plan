@@ -1,0 +1,174 @@
+# Implementation Plan - Bizzy SaaS
+
+Bizzy is a premium management platform for businesses of all sizes, from SMEs to enterprise. The platform focuses on ease of use ("Business Made Easy") with professional features like Warehouse Management, POS, and Staff Management.
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Domain Configuration**: To support subdomains like `bisnisku.bizzy.id`, you will need to configure a Wildcard DNS record (`*.bizzy.id`) pointing to your Vercel/hosting server and a Wildcard SSL certificate.
+
+> [!IMPORTANT]
+> **Supabase Project**: I will provide the SQL schema for Supabase. You will need to create a project in Supabase and provide the `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` once we start setting up.
+
+## Proposed Changes
+
+### Project Initialization
+- Initialize a **Next.js 14** project with **App Router**, **TypeScript**, and **Tailwind CSS**. (Completed)
+- Setup **Shadcn UI** as the base component library for premium aesthetics.
+- Setup **Lucide React** for icons and **Framer Motion** for micro-animations.
+
+---
+
+### Phase 1: Premium Modern Vibrant Landing Page (Chosen Style)
+- **Design Aesthetic**: Modern, vibrant, and approachable professional. Inspired by the "Stripe" aesthetic but tailored for Indonesian SME management.
+- **Design Tokens**: 
+    - **Background**: Crisp white (`#FFFFFF`) with sophisticated mesh gradients in Indigo, Slate, and Gold.
+    - **Typography**: Inter or Outfit. Bold headers (`text-6xl`), clean body text.
+    - **Visuals**: Bento-style grid with soft shadows (`shadow-xl`) and slightly rounded corners (`rounded-3xl`).
+- **Sections**:
+    - **Hero**: outcome-driven headline with a mesh gradient background and primary CTA.
+    - **Features**: Bento grid showcasing Warehouse, POS, and Staff management with hover animations.
+    - **Pricing**: Minimalist tiered cards.
+- **Mockup Reference**: [Stripe-Style Mockup](./bizzy_stripe_style_mockup_1775958413839.png)
+
+---
+
+
+
+
+
+### Phase 2: Backend Architecture & Database (Supabase)
+
+> [!IMPORTANT]
+> **Architecture Model**: We are implementing a **"Pooled Multi-Tenancy"** model. All tenants (users/organizations) share a single database and single schema. Logical data isolation is strictly enforced at the database engine level using PostgreSQL Row-Level Security (RLS). This is the enterprise standard for extreme scalability and lowest cost.
+
+#### Core Scaling Strategies
+1.  **Logical Isolation (RLS)**: Every query automatically filters by `organization_id` based on the authenticated user's JWT. A tenant cannot physically query another tenant's data.
+2.  **Performance Indexing**: To handle millions of rows, B-Tree composite indexes will be heavily applied, starting with the `tenant_id` / `organization_id` column on every critical table (e.g., `CREATE INDEX idx_products_org_id ON products(organization_id)`).
+3.  **Concurrency (Connection Pooling)**: Supabase's built-in **Supavisor** connection pooler will be used. It multiplexes thousands of incoming Next.js requests into a small number of persistent Postgres connections, preventing database overload during peak hours constraint.
+4.  **Edge Caching**: Next.js 14 Data Cache and Full Route Cache will be utilized extensively for read-heavy operations (e.g., product catalogs) to deflect 80%+ of traffic away from the database.
+
+#### Initial Core Database Schema (Draft)
+- `organizations`: Stores tenant root data (`id`, `subdomain_slug`, `name`, `subscription_tier`).
+- `profiles`: User profiles linked to Supabase `auth.users`.
+- `memberships`: The junction table linking `profiles` to `organizations` with specific roles (owner, admin, staff).
+- `warehouses`: Tiered access locations linked to `organization_id`.
+- `products`: Product catalog linked to `organization_id`.
+- `inventory_levels`: Stock tracking linking `product_id` and `warehouse_id`.
+- `transactions`: POS logs and stock movement logs.
+---
+
+### Phase 3: Authentication Strategy (Supabase Auth)
+> [!NOTE]
+> We will use a **Hybrid Authentication Model** to balance frictionless onboarding for owners and practical access for staff.
+
+- **Business Owners (Primary Registration)**: 
+    - **Method**: Google OAuth (SSO).
+    - **Reason**: 1-click registration, high security, no password fatigue. Perfect for high-conversion onboarding on the main landing page (`bizzy.id`).
+- **Staff / Employees (Kasir, Gudang)**:
+    - **Method**: Username & Password / PIN.
+    - **Reason**: Owner dapat dengan mudah men-generate akun generik (misal: Username: `kasir_cabang1`, PIN: `123456`) di Dashboard mereka tanpa perlu email sungguhan. Staff login langsung di subdomain `namatoko.bizzy.id`.
+- **Technical Handling**: 
+    - Supabase Auth akan dikonfigurasi untuk memungkinkan login tanpa email (menggunakan kombinasi Username/Unique Phone Number + Password).
+    - Wildcard redirect URLs (`*.bizzy.id/auth/callback`) akan di-setting untuk SSO Owner.
+
+---
+
+### Phase 4: Subscription Tiering & Payment Gateway
+> [!NOTE]
+> **Tier Enforcement Architecture**: We need to enforce feature limits (e.g., Basic has 1 Warehouse, Pro has 3) securely.
+
+#### 1. Tiering Enforcement Layer
+- **Database Level (Organizations Table)**: Tabel `organizations` akan ditambahkan kolom `subscription_tier` (enum: `basic`, `pro`, `enterprise`), `tier_expires_at` (timestamp), dan `gateway_customer_id` (untuk mapping dengan Midtrans/Xendit nantinya).
+- **Server-Side Checks (Next.js Server Actions)**: Saat Owner mencoba membuat Cabang/Staff baru, server akan menghitung jumlah data saat ini (`SELECT count()`). Jika sudah mencapai limit *Tier*-nya, *request* diblokir dan di-*reject*.
+- **UI Level**: Tombol "Tambah Staff" akan dinonaktifkan (disabled) jika limit tercapai, dan memunculkan *Modal* "Upgrade Paket Anda".
+
+#### 2. Payment Gateway Foundation (Persiapan Midtrans/Xendit)
+Walaupun integrasi aktual akan dilakukan belakangan, pondasi databasenya disiapkan dari awal:
+- **Tabel Baru (`billing_invoices`)**:
+    - `id` (UUID)
+    - `organization_id` (FK)
+    - `gateway_invoice_id` (String - ID dari Midtrans)
+    - `amount` (Decimal)
+    - `status` (enum: `pending`, `paid`, `failed`, `expired`)
+    - `payment_url` (String - Link Snap Midtrans)
+- **Arsitektur Webhook (`/api/webhooks/payment`)**:
+    - Menyiapkan sebuah *API Endpoint* (Route Handler di Next.js) berstatus *Public* yang bertugas murni untuk mendengarkan *POST request* diam-diam dari server Midtrans/Xendit sesaat setelah pelanggan berhasil bayar.
+    - Begitu *Webhook* menerima sinyal `status: settlement`, *script* akan otomatis meng-update `tier_expires_at` (misal: tambah 30 hari) di tabel `organizations`.
+- **Eksekusi MVP**: Untuk tes jalan awal, kita bisa membuat fungsi "Simulasi Webhook" di Dashboard Admin agar Owner seolah-olah sudah membayar (By-pass bayar manual).
+
+---
+
+### Phase 5: Extensible Feature Entitlement Architecture
+> [!NOTE]
+> **Tantangan**: Agar saat Bizzy mau menambah fitur baru (misal: "CRM Module"), kita tidak perlu membongkar seluruh kode dari awal dan bisa dengan mudah mengaturnya ke dalam paket tertentu (Basic/Pro).
+> **Solusi**: Kita akan menggunakan kombinasi **Feature Matrix Config** dan **JSONB Entitlements**.
+
+1.  **Codebase Layer (Feature Matrix)**:
+    - Di dalam kode Next.js, kita akan membuat satu file sumber kebenaran (Single Source of Truth) bernama `config/features.ts`.
+    - File ini berisi pemetaan konstan. Contoh: Paket `pro` memiliki hak akses `['pos', 'warehouse_multi', 'analytics_advanced']` dan limit `max_staff: unlimited`.
+    - Jika ada fitur baru, *Developer* cukup menambah 1 baris kode di file konfigurasi ini.
+
+2.  **Database Layer (Add-ons & Custom Entitlements)**:
+    - Di tabel `organizations`, selain ada kolom `subscription_tier`, kita akan menambahkan kolom `custom_entitlements` ber-tipe **JSONB** (struktur data fleksibel khas Postgres).
+    - **Fungsinya**: Jika suatu saat ada *User Basic* yang ingin beli "Add-on khusus 1 gudang tambahan" *tanpa* harus *upgrade* ke Pro, kita tinggal menyuntikkan data JSON ke sini: `{"extra_warehouse": 1}`.
+    - Sistem RLS dan *Server Actions* kita akan membaca hak akses dengan rumus: `(Fitur Bawaan Tier) + (Custom Entitlements)`.
+
+3.  **UI & Middleware Guard**:
+    - Kita akan membuat sebuah *Higher-Order Component* (misal `<RequireFeature name="analytics_advanced">`) untuk di *Front-end*. Jika fitur tidak termasuk di paket user, UI otomatis memunculkan "Lock Icon Premium", alih-alih me-*render* komponen aslinya.
+    - Di sisi *Middleware*, jika user memaksa mengetik URL `/admin/reports` padahal dia *Basic*, server akan otomatis menendang (redirect) kembali ke *Dashboard*.
+
+---
+
+### Subdomain Routing (Middleware)
+- Implement `middleware.ts` to:
+    1. Detect the host (e.g., `apple.bizzy.id`).
+    2. Ignore reserved subdomains (e.g., `www`, `app`, `admin`).
+    3. Rewrite the internal path to `/tenant/[slug]/...` while keeping the URL in the browser as the subdomain.
+
+---
+
+### Phase 6: Super Admin & Backoffice Architecture
+> [!NOTE]
+> Sebagai pemilik "Bizzy", Anda butuh "Pusat Kendali" (Command Center) untuk melihat metrik profit, memblokir akun yang melanggar, memperpanjang paket user secara manual, atau memberikan fitur bonus (Custom Entitlements).
+
+Untuk arsitektur Super Admin, kita menerapkan **Phased Approach (Bertahap)** agar Anda bisa rilis lebih cepat:
+
+#### 1. Cara Cepat (Fase MVP / Awal Rilis)
+- **Supabase Dashboard (Table Editor)**: Karena kita menggunakan Supabase, Anda otomatis mendapatkan panel admin *built-in* dari mereka. Anda (sebagai *developer/owner*) bisa langsung mencari nama bisnis, mengedit kolom `subscription_tier`, dan mengotak-atik `custom_entitlements` layaknya bermain Microsoft Excel di Supabase. Ini menekan biaya dan waktu rilis hingga 0 hari untuk fitur admin.
+
+#### 2. Cara Jangka Panjang (Custom Backoffice)
+- Begitu pendaftar sudah ratusan dan Anda punya staff *Customer Service*, menggunakan Supabase terlalu rawan (risiko salah hapus data).
+- Kita akan membangun sebuah *Route* tersembunyi, misal di **`admin.bizzy.id`**.
+- **Role Security**: Di database, kita akan membuat level otorisasi global. Di tabel `profiles` (data diri Anda), akan kita beri statust `is_super_admin: true`.
+- **Fitur Custom Panel**: 
+    - Grafik pendaftaran user baru.
+    - Tabel manajemen *Customer* (Ubah tier, tambah addon, suspend akun, simulasi integrasi Midtrans).
+    - Halaman untuk meracik/mengganti batas fitur tanpa menyentuh *codingan* langsung.
+
+---
+
+### UI/UX Design System
+- **Aesthetic**: Premium "Dark/Glassmorphism" theme.
+- **Typography**: Using `Outfit` or `Inter` for a modern, clean look.
+- **Components**:
+    - **Owner Dashboard**: High-level analytics with beautiful charts.
+    - **Warehouse Module**: List views with real-time stock indicators.
+    - **POS Interface**: Optimized for speed and touch interaction.
+    - **Pricing Page**: Professional tiered cards (Basic, Pro, Enterprise).
+
+## Open Questions
+
+- **Root Domain**: Is `bizzy.id` the actual domain you own? We need to know this for cookie scoping (e.g., setting cookies to `.bizzy.id`).
+- **Payment Gateway**: Do you have a preference for the payment provider? (Stripe, Midtrans, etc.) For tiered subscriptions.
+
+## Verification Plan
+
+### Automated Tests
+- Test middleware routing logic (mocking different host headers).
+- Verify Supabase RLS policies by attempting to query data from a different `organization_id`.
+
+### Manual Verification
+- Verify the login flow across multiple subdomains.
+- Test the POS interface for responsiveness on mobile/tablet.
+- Validate warehouse stock updates across different staff accounts.

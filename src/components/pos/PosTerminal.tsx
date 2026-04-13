@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import { cn } from "@/lib/utils";
+import React, { useState, useMemo, useTransition } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Search, Plus, Minus, Trash2, CreditCard, Banknote, ImageOff, User } from "lucide-react";
+import { Search, Plus, Minus, Trash2, CreditCard, Banknote, ImageOff, User, Loader2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,40 +17,38 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { checkoutCart } from "@/lib/services/transactions";
+import { toast } from "sonner";
 
-// Mock data
-const categories = ["Semua", "Minuman", "Makanan", "Snack", "Kopi", "Non-Kopi"];
-const mockProducts = [
-  { id: "1", name: "Kopi Susu Aren", category: "Kopi", price: 35000, stock: 42, sku: "KSA-01" },
-  { id: "2", name: "Matcha Latte", category: "Non-Kopi", price: 38000, stock: 15, sku: "ML-01" },
-  { id: "3", name: "Croissant Original", category: "Makanan", price: 28000, stock: 8, sku: "CRO-01" },
-  { id: "4", name: "Pisang Goreng", category: "Snack", price: 15000, stock: 20, sku: "PGR-01" },
-  { id: "5", name: "Es Teh Manis", category: "Minuman", price: 12000, stock: 150, sku: "ETM-01" },
-  { id: "6", name: "Americano", category: "Kopi", price: 25000, stock: 50, sku: "AMR-01" },
-  { id: "7", name: "Spaghetti Bolognese", category: "Makanan", price: 45000, stock: 10, sku: "SPG-01" },
-  { id: "8", name: "French Fries", category: "Snack", price: 22000, stock: 35, sku: "FFR-01" },
-];
-
-interface CartItem {
-  product: typeof mockProducts[0];
-  quantity: number;
+interface PosTerminalProps {
+  initialProducts: any[];
+  orgId: string;
+  warehouseId?: string;
 }
 
-export function PosTerminal() {
+export function PosTerminal({ initialProducts = [], orgId, warehouseId }: PosTerminalProps) {
+  // Extract unique categories dynamically from products
+  const categoriesObjects = Array.from(new Set(initialProducts.map(p => p.category?.name).filter(Boolean)));
+  const categories = ["Semua", ...categoriesObjects];
+  
   const [activeCategory, setActiveCategory] = useState("Semua");
   const [searchQuery, setSearchQuery] = useState("");
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<{product: any, quantity: number}[]>([]);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
 
   // Filter products
-  const filteredProducts = mockProducts.filter((p) => {
-    const matchesCategory = activeCategory === "Semua" || p.category === activeCategory;
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
-  });
+  const filteredProducts = useMemo(() => {
+    return initialProducts.filter((p) => {
+      const cat = p.category?.name || "Uncategorized";
+      const matchesCategory = activeCategory === "Semua" || cat === activeCategory;
+      const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase());
+      return matchesCategory && matchesSearch;
+    });
+  }, [initialProducts, activeCategory, searchQuery]);
 
   // Cart actions
-  const addToCart = (product: typeof mockProducts[0]) => {
+  const addToCart = (product: any) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
       if (existing) {
@@ -83,28 +82,55 @@ export function PosTerminal() {
   const formatIDR = (num: number) => 
     new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(num);
 
+  const handleCheckout = (method: string) => {
+    if (!orgId) {
+      toast.error("Error: Organization ID not found");
+      return;
+    }
+    
+    startTransition(async () => {
+      try {
+        await checkoutCart(
+          orgId,
+          warehouseId || null as any,
+          method,
+          cart.map(c => ({ id: c.product.id, name: c.product.name, price: c.product.price, quantity: c.quantity })),
+          subtotal,
+          tax,
+          total
+        );
+        
+        toast.success(`Transaksi Berhasil via ${method.toUpperCase()}!`);
+        clearCart();
+        setIsCheckoutOpen(false);
+      } catch (err: any) {
+        toast.error("Gagal memproses transaksi: " + err.message);
+      }
+    });
+  };
+
   return (
     <div className="flex flex-col lg:flex-row gap-4 h-[calc(100vh-8rem)]">
       {/* LEFT: Products Area */}
       <div className="flex-1 overflow-hidden flex flex-col space-y-4">
         {/* Top Bar: Search and Categories */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 shrink-0 bg-background/50 p-2 rounded-xl border border-border/40">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 shrink-0">
           <div className="relative w-full sm:w-64 shrink-0">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Cari produk..."
-              className="pl-9 bg-background"
+              className="pl-9"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
           <ScrollArea className="w-full whitespace-nowrap">
-            <div className="flex w-max space-x-2 p-1">
-              {categories.map((cat) => (
+            <div className="flex w-max space-x-2">
+              {categories.map((cat: any) => (
                 <Badge
                   key={cat}
                   variant={activeCategory === cat ? "default" : "secondary"}
-                  className="px-4 py-1.5 cursor-pointer text-sm font-medium hover:bg-primary/90 transition-colors"
+                  className="cursor-pointer capitalize"
                   onClick={() => setActiveCategory(cat)}
                 >
                   {cat}
@@ -121,30 +147,31 @@ export function PosTerminal() {
             {filteredProducts.map((product) => (
               <Card 
                 key={product.id} 
-                className="overflow-hidden cursor-pointer hover:border-primary/50 transition-colors group flex flex-col h-full"
+                className="overflow-hidden cursor-pointer hover:border-primary"
                 onClick={() => addToCart(product)}
               >
-                <div className="aspect-[4/3] bg-muted flex items-center justify-center shrink-0">
-                  <ImageOff className="text-muted-foreground/30 h-8 w-8 group-hover:scale-110 transition-transform" />
+                <div className="aspect-video bg-muted flex items-center justify-center">
+                  {product.image_url ? (
+                    <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <ImageOff className="text-muted-foreground" size={24} />
+                  )}
                 </div>
-                <CardContent className="p-3 flex flex-col flex-1">
-                  <p className="text-xs text-muted-foreground mb-1 font-medium">{product.category}</p>
-                  <p className="font-semibold text-sm leading-tight flex-1 line-clamp-2" title={product.name}>
+                <CardContent className="p-4">
+                  <Badge variant="outline" className="mb-2">
+                    {product.category?.name || "Lainnya"}
+                  </Badge>
+                  <p className="font-semibold leading-tight line-clamp-2 mb-2">
                     {product.name}
                   </p>
-                  <div className="flex items-end justify-between mt-2 pt-2 border-t border-border/40 shrink-0">
-                    <p className="text-primary font-bold text-sm tracking-tight">{formatIDR(product.price)}</p>
-                    <div className="bg-primary/10 text-primary h-6 w-6 rounded flex items-center justify-center text-xs opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all font-bold">
-                      +
-                    </div>
-                  </div>
+                  <p className="font-medium text-primary">{formatIDR(product.price)}</p>
                 </CardContent>
               </Card>
             ))}
             {filteredProducts.length === 0 && (
               <div className="col-span-full py-20 text-center text-muted-foreground">
                 <Search className="mx-auto h-12 w-12 opacity-20 mb-3" />
-                <p>Tidak ada produk yang cocok dengan pencarian.</p>
+                <p>Tidak ada produk yang tersedia.</p>
               </div>
             )}
           </div>
@@ -152,11 +179,11 @@ export function PosTerminal() {
       </div>
 
       {/* RIGHT: Cart Panel */}
-      <Card className="w-full lg:w-[380px] flex flex-col border-border/60 shrink-0 h-full shadow-lg lg:shadow-none overflow-hidden">
+      <Card className="w-full lg:w-[380px] flex flex-col shrink-0 h-full overflow-hidden">
         {/* Cart Header */}
-        <div className="p-4 border-b border-border/40 shrink-0 bg-muted/10 flex items-center justify-between">
+        <div className="p-4 border-b shrink-0 flex items-center justify-between">
           <div>
-            <h2 className="font-bold font-heading text-lg">Pesanan Saat Ini</h2>
+            <h2 className="font-bold text-lg">Pesanan Saat Ini</h2>
             <p className="text-xs text-muted-foreground">{cart.length} item dalam keranjang</p>
           </div>
           <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={clearCart} disabled={cart.length === 0} title="Kosongkan">
@@ -165,7 +192,7 @@ export function PosTerminal() {
         </div>
 
         {/* Customer Selector (Placeholder) */}
-        <div className="p-3 border-b border-border/40 shrink-0 bg-background">
+        <div className="p-3 border-b shrink-0">
           <Button variant="outline" className="w-full justify-start text-muted-foreground gap-2 font-normal">
             <User size={16} /> Tambah Data Pelanggan (Opsional)
           </Button>
@@ -208,7 +235,7 @@ export function PosTerminal() {
         </ScrollArea>
 
         {/* Sticky Bottom Summary & Checkout */}
-        <div className="p-4 border-t border-border/40 shrink-0 bg-background">
+        <div className="p-4 border-t shrink-0">
           <div className="space-y-1.5 mb-4 text-sm">
             <div className="flex justify-between text-muted-foreground">
               <span>Subtotal</span>
@@ -218,49 +245,47 @@ export function PosTerminal() {
               <span>Pajak (11%)</span>
               <span className="font-medium">{formatIDR(tax)}</span>
             </div>
-            <div className="flex justify-between pt-2 border-t border-border/40 items-center">
+            <div className="flex justify-between pt-2 border-t items-center">
               <span className="font-semibold text-base">Total Bayar</span>
-              <span className="font-bold font-heading text-xl text-primary tracking-tight">{formatIDR(total)}</span>
+              <span className="font-bold text-xl">{formatIDR(total)}</span>
             </div>
           </div>
 
           <Dialog open={isCheckoutOpen} onOpenChange={setIsCheckoutOpen}>
-            <DialogTrigger 
-              render={
-                <Button 
-                  className="w-full h-14 text-base font-bold shadow-md shadow-primary/20 gap-2" 
-                  disabled={cart.length === 0}
-                />
-              }
-            >
-              Bayar Pesanan
+            <DialogTrigger asChild>
+              <Button disabled={cart.length === 0} className="w-full">
+                Bayar Pesanan
+              </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
-                <DialogTitle className="font-heading">Pilih Metode Pembayaran</DialogTitle>
+                <DialogTitle>Pilih Metode Pembayaran</DialogTitle>
                 <DialogDescription>
                   Total tagihan untuk {cart.length} item adalah <strong className="text-foreground">{formatIDR(total)}</strong>.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid grid-cols-2 gap-4 py-4">
-                <Button variant="outline" className="h-24 flex flex-col gap-3 border-2 hover:border-primary hover:bg-primary/5 transition-all">
-                  <Banknote size={32} className="text-emerald-500" />
-                  <span className="font-semibold">Uang Tunai</span>
+                <Button 
+                  disabled={isPending}
+                  variant="outline" 
+                  onClick={() => handleCheckout("cash")}
+                  className="h-24 flex flex-col gap-3 border-2 hover:border-primary hover:bg-primary/5 transition-all text-emerald-500"
+                >
+                  {isPending ? <Loader2 className="animate-spin" size={32} /> : <Banknote size={32} />}
+                  <span className="font-semibold text-foreground">Uang Tunai</span>
                 </Button>
-                <Button variant="outline" className="h-24 flex flex-col gap-3 border-2 hover:border-primary hover:bg-primary/5 transition-all">
-                  <CreditCard size={32} className="text-blue-500" />
-                  <span className="font-semibold">QRIS / EDC</span>
+                <Button 
+                  disabled={isPending}
+                  variant="outline" 
+                  onClick={() => handleCheckout("qris")}
+                  className="h-24 flex flex-col gap-3 border-2 hover:border-primary hover:bg-primary/5 transition-all text-blue-500"
+                >
+                  {isPending ? <Loader2 className="animate-spin" size={32} /> : <CreditCard size={32} />}
+                  <span className="font-semibold text-foreground">QRIS / EDC</span>
                 </Button>
               </div>
               <DialogFooter>
-                <Button variant="ghost" onClick={() => setIsCheckoutOpen(false)}>Batal</Button>
-                <Button onClick={() => {
-                  alert("Transaksi Berhasil Dimasukkan ke Database!");
-                  clearCart();
-                  setIsCheckoutOpen(false);
-                }}>
-                  Konfirmasi Pembayaran
-                </Button>
+                <Button disabled={isPending} variant="ghost" onClick={() => setIsCheckoutOpen(false)}>Batal</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>

@@ -27,6 +27,12 @@ export async function proxy(request: NextRequest) {
       if (!RESERVED_SUBDOMAINS.has(sub)) {
         tenantSlug = sub;
       }
+    } else if (hostname.endsWith(".localhost")) {
+      // Support for local development (e.g. toko.localhost:3000)
+      const sub = hostname.replace(".localhost", "");
+      if (!RESERVED_SUBDOMAINS.has(sub)) {
+        tenantSlug = sub;
+      }
     }
   }
 
@@ -46,9 +52,16 @@ export async function proxy(request: NextRequest) {
             request.cookies.set(name, value)
           );
           supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
+          cookiesToSet.forEach(({ name, value, options }) => {
+            const isProd = process.env.NODE_ENV === "production";
+            // Important: In local dev, setting domain: 'localhost' breaks subdomains.
+            // Leaving it undefined ensures the browser applies it to the exact originating host perfectly.
+            const cookieOptions = isProd 
+                ? { ...options, domain: `.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}` }
+                : { ...options };
+                
+            supabaseResponse.cookies.set(name, value, cookieOptions);
+          });
         },
       },
     }
@@ -61,6 +74,18 @@ export async function proxy(request: NextRequest) {
 
   // ─── Tenant Route Rewriting ──────────────────────────────────────────────
   if (tenantSlug) {
+    // Exclude authentication and system APIs from tenant scope rewriting
+    if (url.pathname === "/login" || url.pathname.startsWith("/auth/") || url.pathname.startsWith("/api/")) {
+      return supabaseResponse;
+    }
+
+    if (!user) {
+      // If trying to access a tenant but not logged in, redirect to login
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      return NextResponse.redirect(loginUrl);
+    }
+
     // Rewrite /any-path -> /tenant/[slug]/any-path internally
     // Browser URL stays as toko.bizzy.id/any-path (unchanged)
     const newPath = `/tenant/${tenantSlug}${url.pathname}`;
@@ -72,6 +97,33 @@ export async function proxy(request: NextRequest) {
     supabaseResponse.cookies.getAll().forEach((cookie) => {
       rewriteResponse.cookies.set(cookie.name, cookie.value);
     });
+
+    return rewriteResponse;
+  }
+
+  // ─── System Route Rewriting (Admin) ────────────────────────────────────
+  const isAdminSubdomain = hostname === `admin.${ROOT_DOMAIN}` || hostname === "admin.localhost";
+  
+  if (isAdminSubdomain) {
+    // If they visit admin.bizzy.id, internally map it to /admin
+    if (url.pathname === "/") {
+      url.pathname = "/admin";
+    } else if (!url.pathname.startsWith("/admin")) {
+      url.pathname = `/admin${url.pathname}`;
+    }
+
+    const rewriteResponse = NextResponse.rewrite(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      rewriteResponse.cookies.set(cookie.name, cookie.value);
+    });
+    
+    // Protect Admin Routes (except /admin/login)
+    const isAdminLogin = url.pathname === "/admin/login";
+    if (!user && !isAdminLogin) {
+      const loginUrl = request.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      return NextResponse.redirect(loginUrl);
+    }
 
     return rewriteResponse;
   }

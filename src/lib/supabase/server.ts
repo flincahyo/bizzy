@@ -14,9 +14,12 @@ export const createClient = async () => {
         },
         setAll(cookiesToSet) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
+            cookiesToSet.forEach(({ name, value, options }) => {
+              const cookieDomain = process.env.NODE_ENV === "production" 
+                  ? `.${process.env.NEXT_PUBLIC_ROOT_DOMAIN}` 
+                  : "localhost";
+              cookieStore.set(name, value, { ...options, domain: cookieDomain });
+            });
           } catch {
             // Server Component - cookies set from middleware
           }

@@ -24,15 +24,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             <SidebarGroupContent>
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <SidebarMenuButton render={<Link href="/admin" />}>
-                    <LayoutDashboard size={14} className="mr-2" />
-                    Dashboard
+                  <SidebarMenuButton asChild>
+                    <Link href="/admin">
+                      <LayoutDashboard size={14} className="mr-2" />
+                      Dashboard
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
                 <SidebarMenuItem>
-                  <SidebarMenuButton render={<Link href="/admin/customers" />}>
-                    <Users size={14} className="mr-2" />
-                    Customers (Tenants)
+                  <SidebarMenuButton asChild>
+                    <Link href="/admin/customers">
+                      <Users size={14} className="mr-2" />
+                      Customers (Tenants)
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               </SidebarMenu>

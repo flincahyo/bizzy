@@ -1,12 +1,18 @@
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { TenantSidebar } from "@/components/dashboard/TenantSidebar";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbList,
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
+import { ModeToggle } from "@/components/mode-toggle";
+
+import { getTenantProfileBySlug } from "@/lib/services/tenant";
+
+import { AppsSubscription, DEFAULT_SUBSCRIPTION } from "@/lib/features";
 
 interface TenantLayoutProps {
   children: React.ReactNode;
@@ -16,33 +22,41 @@ interface TenantLayoutProps {
 export default async function TenantLayout({ children, params }: TenantLayoutProps) {
   const { slug } = await params;
 
-  // In a real scenario, fetch org data from Supabase here using the slug
-  // const supabase = await createClient();
-  // const { data: org } = await supabase.from("organizations").select().eq("subdomain_slug", slug).single();
+  const data = await getTenantProfileBySlug(slug);
+  
+  // Provide fallbacks if missing (e.g., viewing /tenant/demo without db init)
+  const orgName = data?.org?.name || "Toko Setup Required";
+  const appsSubscription: AppsSubscription = data?.org?.apps_subscription || DEFAULT_SUBSCRIPTION;
+  const userName = data?.profile?.full_name || "Pemilik";
+  const avatarUrl = data?.profile?.avatar_url || "";
 
   return (
     <SidebarProvider>
       <TenantSidebar
         slug={slug}
-        orgName="Toko Demo"
-        tier="pro"
-        userName="Admin"
+        orgName={orgName}
+        appsSubscription={appsSubscription}
+        userName={userName}
+        userAvatar={avatarUrl}
       />
       <SidebarInset>
-        {/* Top nav bar */}
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b border-border/60 px-4 bg-background/95 backdrop-blur sticky top-0 z-10">
-          <SidebarTrigger className="-ml-1" />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbPage className="font-semibold text-sm">Dashboard</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
+        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger className="-ml-1" />
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbPage>{orgName} / Dashboard</BreadcrumbPage>
+                </BreadcrumbItem>
+              </BreadcrumbList>
+            </Breadcrumb>
+          </div>
+          <div className="flex items-center gap-2">
+            <ModeToggle />
+          </div>
         </header>
-        {/* Page content area */}
-        <div className="flex flex-1 flex-col gap-4 p-6 bg-muted/20 min-h-[calc(100vh-4rem)]">
+        
+        <div className="flex flex-1 flex-col gap-4 p-4">
           {children}
         </div>
       </SidebarInset>

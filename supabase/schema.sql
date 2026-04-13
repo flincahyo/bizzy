@@ -16,10 +16,11 @@ CREATE TABLE public.organizations (
   id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name                TEXT NOT NULL,
   subdomain_slug      TEXT NOT NULL UNIQUE,        -- used as the subdomain (e.g. "toko-abc")
-  subscription_tier   subscription_tier NOT NULL DEFAULT 'basic',
-  tier_expires_at     TIMESTAMPTZ,                  -- NULL = free/trial
+  -- MODULAR SAAS TEIRING (App Specific)
+  apps_subscription   JSONB DEFAULT '{"pos": {"tier": "starter", "expires_at": null, "addons": {}}, "inventory": {"tier": "starter", "expires_at": null, "addons": {}}}',
+  
   is_active           BOOLEAN NOT NULL DEFAULT TRUE,
-  custom_entitlements JSONB DEFAULT '{}',           -- Add-on features / limits override
+  custom_entitlements JSONB DEFAULT '{}',           -- Backward compatible / org-wide Add-ons
   gateway_customer_id TEXT,                         -- Midtrans/Xendit customer reference
   logo_url            TEXT,
   address             TEXT,
