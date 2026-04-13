@@ -61,12 +61,17 @@ export async function getTransferOrders(orgId: string) {
   return data || [];
 }
 
-export async function getPendingTransferCount(orgId: string) {
+export async function getPendingTransferOrders(orgId: string) {
   const admin = createAdminClient();
-  const { count } = await admin
+  const { data } = await admin
     .from("transfer_orders")
-    .select("id", { count: "exact" })
+    .select(`
+      id, created_at, status, 
+      source:warehouses!source_warehouse_id(name),
+      destination:warehouses!destination_warehouse_id(name)
+    `)
     .eq("organization_id", orgId)
-    .in("status", ["pending", "processing"]);
-  return count || 0;
+    .in("status", ["pending", "processing"])
+    .order("created_at", { ascending: false });
+  return data || [];
 }

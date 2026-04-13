@@ -10,13 +10,13 @@ import {
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 import { ModeToggle } from "@/components/mode-toggle";
-import { Bell } from "lucide-react";
+import { NotificationBell } from "@/components/dashboard/NotificationBell";
 import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { headers } from "next/headers";
 
 import { getTenantProfileBySlug } from "@/lib/services/tenant";
-import { getPendingTransferCount } from "@/lib/services/products";
+import { getPendingTransferOrders } from "@/lib/services/products";
 
 import { AppsSubscription, DEFAULT_SUBSCRIPTION } from "@/lib/features";
 
@@ -53,7 +53,7 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
   const avatarUrl = data?.profile?.avatar_url || "";
   const orgId = data?.org?.id;
   
-  const pendingTransferCount = orgId ? await getPendingTransferCount(orgId) : 0;
+  const pendingTransferOrders = orgId ? await getPendingTransferOrders(orgId) : [];
 
   // ── Staff Layout ─────────────────────────────────────────────────────────
   if (staffRole) {
@@ -73,14 +73,7 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
               </Breadcrumb>
             </div>
             <div className="flex items-center gap-3">
-              <Link href={`/tenant/${slug}/warehouses`} className="relative text-muted-foreground hover:text-foreground transition-colors mr-2">
-                <Bell size={20} />
-                {pendingTransferCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white z-10">
-                    {pendingTransferCount}
-                  </span>
-                )}
-              </Link>
+              <NotificationBell orders={pendingTransferOrders} slug={slug} />
               <ModeToggle />
             </div>
           </header>
@@ -115,14 +108,7 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
             </Breadcrumb>
           </div>
           <div className="flex items-center gap-3">
-            <Link href={`/tenant/${slug}/warehouses`} className="relative text-muted-foreground hover:text-foreground transition-colors mr-2">
-              <Bell size={20} />
-              {pendingTransferCount > 0 && (
-                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white z-10">
-                  {pendingTransferCount}
-                </span>
-              )}
-            </Link>
+            <NotificationBell orders={pendingTransferOrders} slug={slug} />
             <ModeToggle />
           </div>
         </header>
