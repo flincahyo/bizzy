@@ -36,8 +36,10 @@ export function DeleteAccountDialog() {
         
         toast.success("Akun dan semua data berhasil dihapus permanen.");
         
-        // Redirect to homepage
-        window.location.href = "/";
+        // Redirect to root domain homepage
+        const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "bizzy.sbs";
+        const isLocal = window.location.hostname === "localhost";
+        window.location.href = isLocal ? "/" : `https://${rootDomain}`;
       } catch (err: any) {
         toast.error(err.message ?? "Gagal menghapus akun.");
       }

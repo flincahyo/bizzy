@@ -221,7 +221,10 @@ export function TenantSidebar({
                    const { createClient } = await import("@/lib/supabase/client");
                    const supabase = createClient();
                    await supabase.auth.signOut();
-                   window.location.href = "/login";
+                   // Redirect to root domain, not subdomain
+                   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "bizzy.sbs";
+                   const isLocal = window.location.hostname === "localhost";
+                   window.location.href = isLocal ? "/login" : `https://${rootDomain}/login`;
                 }}>
                   <LogOut />
                   <span>Keluar</span>
