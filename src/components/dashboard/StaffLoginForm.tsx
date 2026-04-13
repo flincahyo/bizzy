@@ -46,6 +46,8 @@ export function StaffLoginForm({ orgSlug }: StaffLoginFormProps) {
       };
 
       toast.success("Login berhasil!");
+      // Update last_login_at in background (fire-and-forget)
+      fetch("/api/staff/record-login", { method: "POST" }).catch(() => {});
       setTimeout(() => {
         window.location.href = REDIRECTS[role] || "/pos";
       }, 300);

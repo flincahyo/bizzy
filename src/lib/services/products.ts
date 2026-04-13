@@ -1,9 +1,12 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+
+// All data reads use the admin client to bypass RLS.
+// Access control is enforced at the proxy/layout level (authenticated Supabase session required).
 
 export async function getProducts(orgId: string) {
-  const supabase = await createClient();
+  const admin = createAdminClient();
   
-  const { data, error } = await supabase
+  const { data, error } = await admin
     .from("products")
     .select(`
       *,
@@ -19,13 +22,22 @@ export async function getProducts(orgId: string) {
 }
 
 export async function getWarehouses(orgId: string) {
-  const supabase = await createClient();
-  const { data } = await supabase.from("warehouses").select("*").eq("organization_id", orgId).order("is_default", { ascending: false });
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("warehouses")
+    .select("*")
+    .eq("organization_id", orgId)
+    .order("is_default", { ascending: false });
   return data || [];
 }
 
 export async function getStaff(orgId: string) {
-  const supabase = await createClient();
-  const { data } = await supabase.from("staff_accounts").select("*").eq("organization_id", orgId).order("created_at", { ascending: false });
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("staff_accounts")
+    .select("*")
+    .eq("organization_id", orgId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: false });
   return data || [];
 }
