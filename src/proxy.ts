@@ -86,6 +86,16 @@ export async function proxy(request: NextRequest) {
       return supabaseResponse;
     }
 
+    // ── OAuth Code Interceptor (Subdomain) ────────────────────────────────
+    // Supabase may redirect ?code= to the root of the subdomain instead of /auth/callback
+    // Catch it and forward to the proper handler
+    const oauthCode = url.searchParams.get("code");
+    if (oauthCode && url.pathname === "/") {
+      const callbackUrl = url.clone();
+      callbackUrl.pathname = "/auth/callback";
+      return NextResponse.redirect(callbackUrl);
+    }
+
     // ── Owner Session (Supabase Auth) ─────────────────────────────────────
     if (user) {
       // Owner has full access — rewrite path and serve

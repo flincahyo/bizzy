@@ -34,8 +34,9 @@ export default function OnboardingPage() {
     try {
       const result = await createOrganization(orgName.trim(), slug.trim());
       toast.success("Toko berhasil dibuat! Mengalihkan ke dashboard...");
+      const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "bizzy.sbs";
       setTimeout(() => {
-        window.location.href = `/tenant/${result.slug}`;
+        window.location.href = `https://${result.slug}.${rootDomain}`;
       }, 1500);
     } catch (err: any) {
       toast.error(err.message ?? "Terjadi kesalahan. Coba lagi.");
@@ -77,9 +78,8 @@ export default function OnboardingPage() {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <Label htmlFor="slug">Alamat Dashboard (Slug)</Label>
-                  <div className="flex items-center rounded-md border">
-                    <span className="pl-3 py-2 text-sm text-muted-foreground shrink-0 border-r pr-2">bizzy.id/</span>
+                  <Label htmlFor="slug">Alamat Subdomain Toko</Label>
+                  <div className="flex items-center rounded-md border overflow-hidden">
                     <Input
                       id="slug"
                       placeholder="kopi-senja"
@@ -88,6 +88,7 @@ export default function OnboardingPage() {
                       className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                       required
                     />
+                    <span className="px-3 py-2 text-sm text-muted-foreground shrink-0 border-l bg-muted whitespace-nowrap">.bizzy.sbs</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Hanya huruf kecil, angka, dan tanda hubung. Tidak bisa diubah setelah dibuat.
