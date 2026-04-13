@@ -80,7 +80,7 @@ export default async function StaffPage({ params }: StaffPageProps) {
                 staffAccounts.map((staff) => {
                   const role = roleConfig[staff.role as keyof typeof roleConfig] || { label: staff.role, variant: "outline" as const };
                   const lastLoginText = staff.last_login_at
-                    ? new Date(staff.last_login_at).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })
+                    ? new Date(staff.last_login_at).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" }) + " WIB"
                     : "Belum pernah login";
 
                   // Bind server action args — safe to pass as prop to Client Component
