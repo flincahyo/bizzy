@@ -19,6 +19,13 @@ export const getTenantProfileBySlug = cache(async (slug: string) => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { org, profile: null, isMember: false };
 
+  const isSuperadmin = user.user_metadata?.is_superadmin === true;
+  if (isSuperadmin) {
+    // Supermin can bypass everything. Give them full owner access
+    const { data: profile } = await supabase.from("profiles").select("*").eq("id", user.id).single();
+    return { org, profile, isMember: true };
+  }
+
   // Staff users (is_staff: true in metadata) are not in memberships — skip that check
   const isStaff = user.user_metadata?.is_staff === true;
   if (isStaff) {

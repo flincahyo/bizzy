@@ -165,11 +165,20 @@ export async function proxy(request: NextRequest) {
     });
     
     // Protect Admin Routes (except /admin/login)
+    // Protect Admin Routes (except /admin/login)
     const isAdminLogin = url.pathname === "/admin/login";
     if (!user && !isAdminLogin) {
       const loginUrl = request.nextUrl.clone();
       loginUrl.pathname = "/login";
       return NextResponse.redirect(loginUrl);
+    }
+
+    if (user && !isAdminLogin && user.user_metadata?.is_superadmin !== true) {
+      // Authenticated but not a superadmin
+      const unauthUrl = request.nextUrl.clone();
+      unauthUrl.pathname = "/unauthorized";
+      // Ensure we hit the central unauthorized routing or just drop them to their tenant
+      return NextResponse.redirect(unauthUrl);
     }
 
     return rewriteResponse;

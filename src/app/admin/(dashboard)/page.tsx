@@ -1,35 +1,41 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Users, CreditCard, Building2, TrendingUp, Sparkles } from "lucide-react";
+import { getSuperadminStats } from "@/lib/actions/superadmin";
 
-const stats = [
-  {
-    title: "Total Tenants (Customers)",
-    value: "2", // Hardcoded MVP
-    change: "+2 this month",
-    icon: Building2,
-    color: "text-blue-600",
-    bg: "bg-blue-50",
-  },
-  {
-    title: "Monthly Recurring Revenue (MRR)",
-    value: "Rp 398.000",
-    change: "+199.000 this month",
-    icon: TrendingUp,
-    color: "text-emerald-600",
-    bg: "bg-emerald-50",
-  },
-  {
-    title: "Total Active Users (Staff)",
-    value: "14",
-    change: "+4 this week",
-    icon: Users,
-    color: "text-indigo-600",
-    bg: "bg-indigo-50",
-  },
-];
+export default async function AdminDashboardPage() {
+  const statsData = await getSuperadminStats();
+  
+  const formatIDR = (num: number) => 
+    new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(num);
 
-export default function AdminDashboardPage() {
+  const stats = [
+    {
+      title: "Total Tenants (Customers)",
+      value: statsData.totalTenants.toString(),
+      change: "Active tenants on platform",
+      icon: Building2,
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+    },
+    {
+      title: "Gross Merchandise Value (GMV)",
+      value: formatIDR(statsData.totalGmv),
+      change: "Lifetime sales volume across tenants",
+      icon: TrendingUp,
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+    },
+    {
+      title: "Total Users (Staffs & Owners)",
+      value: statsData.totalUsers.toString(),
+      change: "Total registered profiles",
+      icon: Users,
+      color: "text-indigo-600",
+      bg: "bg-indigo-50",
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <div>
