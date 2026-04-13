@@ -10,6 +10,8 @@ import {
   BreadcrumbPage,
 } from "@/components/ui/breadcrumb";
 import { ModeToggle } from "@/components/mode-toggle";
+import { Bell } from "lucide-react";
+import Link from "next/link";
 import { redirect, notFound } from "next/navigation";
 import { headers } from "next/headers";
 
@@ -57,7 +59,7 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
   if (staffRole) {
     return (
       <SidebarProvider>
-        <StaffSidebar role={staffRole} orgName={orgName} staffName={staffName} pendingTransferCount={pendingTransferCount} />
+        <StaffSidebar role={staffRole} orgName={orgName} staffName={staffName} />
         <SidebarInset>
           <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
             <div className="flex items-center gap-2">
@@ -70,7 +72,17 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
                 </BreadcrumbList>
               </Breadcrumb>
             </div>
-            <ModeToggle />
+            <div className="flex items-center gap-3">
+              <Link href={`/tenant/${slug}/warehouses`} className="relative text-muted-foreground hover:text-foreground transition-colors mr-2">
+                <Bell size={20} />
+                {pendingTransferCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white z-10">
+                    {pendingTransferCount}
+                  </span>
+                )}
+              </Link>
+              <ModeToggle />
+            </div>
           </header>
           <div className="flex flex-1 flex-col gap-4 p-4">
             {children}
@@ -89,7 +101,6 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
         appsSubscription={appsSubscription}
         userName={userName}
         userAvatar={avatarUrl}
-        pendingTransferCount={pendingTransferCount}
       />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-4 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
@@ -103,7 +114,15 @@ export default async function TenantLayout({ children, params }: TenantLayoutPro
               </BreadcrumbList>
             </Breadcrumb>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <Link href={`/tenant/${slug}/warehouses`} className="relative text-muted-foreground hover:text-foreground transition-colors mr-2">
+              <Bell size={20} />
+              {pendingTransferCount > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white z-10">
+                  {pendingTransferCount}
+                </span>
+              )}
+            </Link>
             <ModeToggle />
           </div>
         </header>

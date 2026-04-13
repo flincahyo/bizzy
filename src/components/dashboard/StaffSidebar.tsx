@@ -146,16 +146,9 @@ export function StaffSidebar({ role, orgName = "Toko", staffName, pendingTransfe
                       isActive={isActive}
                       tooltip={item.title}
                     >
-                      <Link href={item.href} prefetch={true} className="flex items-center justify-between w-full">
-                        <div className="flex items-center gap-2">
-                          <item.icon />
-                          <span>{item.title}</span>
-                        </div>
-                        {item.title === "Gudang" && pendingTransferCount > 0 && (
-                          <span className="bg-red-500 text-white text-[10px] items-center justify-center font-bold px-1.5 py-0.5 rounded-full animate-pulse ml-auto">
-                            {pendingTransferCount}
-                          </span>
-                        )}
+                      <Link href={item.href} prefetch={true}>
+                        <item.icon />
+                        <span>{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

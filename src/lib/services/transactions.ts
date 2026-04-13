@@ -1,5 +1,6 @@
 "use server";
 import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
 
 export async function getRecentTransactions(orgId: string, limit = 10) {
   const supabase = await createClient();
@@ -79,6 +80,8 @@ export async function checkoutCart(
     }
   }
   
+  revalidatePath("/", "layout");
+  revalidatePath("/tenant/[slug]", "layout");
   return trx;
 }
 

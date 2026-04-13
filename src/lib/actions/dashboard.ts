@@ -460,7 +460,7 @@ export async function createTransferOrder(formData: FormData) {
   const { error: itemsError } = await supabase.from("transfer_order_items").insert(orderItems);
   if (itemsError) throw new Error(itemsError.message);
 
-  revalidatePath(`/tenant/${slug}/warehouses`);
+  revalidatePath(`/tenant/${slug}`, 'layout');
   return { success: true };
 }
 
@@ -519,6 +519,6 @@ export async function updateTransferOrderStatus(orderId: string, orgId: string, 
     }
   }
 
-  revalidatePath(`/tenant/${slug}/warehouses`);
+  revalidatePath(`/tenant/${slug}`, 'layout');
   return { success: true };
 }
