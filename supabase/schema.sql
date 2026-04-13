@@ -81,13 +81,14 @@ CREATE INDEX idx_memberships_org_id ON public.memberships(organization_id);
 CREATE INDEX idx_memberships_profile_id ON public.memberships(profile_id);
 
 -- ─────────────────────────────────────────────────────────────
--- 4. STAFF ACCOUNTS (For username+PIN login - not Supabase Auth)
+-- 4. STAFF ACCOUNTS (Auth via Supabase using synthetic email + PIN as password)
 -- ─────────────────────────────────────────────────────────────
 CREATE TABLE public.staff_accounts (
   id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   organization_id UUID NOT NULL REFERENCES public.organizations(id) ON DELETE CASCADE,
   username        TEXT NOT NULL,
-  pin_hash        TEXT NOT NULL,                    -- bcrypt hashed PIN
+  pin_hash        TEXT,                              -- legacy, nullable (auth now via Supabase auth)
+  supabase_user_id UUID,                             -- links to auth.users for Supabase password auth
   full_name       TEXT NOT NULL,
   role            member_role NOT NULL DEFAULT 'cashier',
   is_active       BOOLEAN NOT NULL DEFAULT TRUE,

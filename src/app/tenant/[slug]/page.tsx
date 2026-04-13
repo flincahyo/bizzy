@@ -34,10 +34,19 @@ export default async function DashboardPage({ params }: DashboardPageProps) {
     );
   }
 
-  const [statsData, recentTransactions] = await Promise.all([
-    getTenantDashboardStats(orgId),
-    getRecentTransactions(orgId, 5)
-  ]);
+  let statsData = { totalRevenue: 0, totalProducts: 0, totalStaff: 0, salesThisMonth: 0 };
+  let recentTransactions: any[] = [];
+
+  try {
+    const [stats, txs] = await Promise.all([
+      getTenantDashboardStats(orgId),
+      getRecentTransactions(orgId, 5),
+    ]);
+    statsData = stats;
+    recentTransactions = txs;
+  } catch (err) {
+    console.error("[DashboardPage] failed to fetch stats:", err);
+  }
 
   const stats = [
     {

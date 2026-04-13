@@ -32,7 +32,7 @@ export async function createOrganization(orgName: string, slug: string) {
     .insert({
       name: orgName,
       subdomain_slug: slug,
-      subscription_tier: "basic",
+      // apps_subscription uses DB default (JSONB with starter tiers)
       is_active: true,
     })
     .select()
