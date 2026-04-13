@@ -16,7 +16,8 @@ import { headers } from "next/headers";
 import { getTenantProfileBySlug } from "@/lib/services/tenant";
 
 import { AppsSubscription, DEFAULT_SUBSCRIPTION } from "@/lib/features";
-import { StaffRole } from "@/lib/staff-session";
+
+type StaffRole = "cashier" | "warehouse_staff" | "admin";
 
 interface TenantLayoutProps {
   children: React.ReactNode;

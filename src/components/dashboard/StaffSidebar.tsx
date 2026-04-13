@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ShoppingCart, Package, Warehouse, BarChart3, LogOut, Building2, KeyRound,
+  ShoppingCart, Package, Warehouse, BarChart3, LogOut, Building2,
 } from "lucide-react";
-import { clearStaffSession } from "@/lib/staff-session";
-import { StaffRole } from "@/lib/staff-session";
+import { createClient } from "@/lib/supabase/client";
 import { toast } from "sonner";
+
+type StaffRole = "cashier" | "warehouse_staff" | "admin";
+
 
 interface StaffSidebarProps {
   role: StaffRole;
@@ -48,10 +50,9 @@ export function StaffSidebar({ role, orgName = "Toko", staffName }: StaffSidebar
 
   const handleLogout = async () => {
     try {
-      const res = await fetch("/api/staff/logout", { method: "POST" });
-      const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "bizzy.sbs";
-      const isLocal = window.location.hostname === "localhost";
-      window.location.href = isLocal ? "/login" : `${window.location.protocol}//${window.location.hostname}/login`;
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      window.location.href = "/login";
     } catch {
       toast.error("Gagal logout.");
     }
